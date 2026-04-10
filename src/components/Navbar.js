@@ -58,6 +58,9 @@ export default function Navbar() {
             <a href="https://www.buymeacoffee.com/adoptino.ro" target="_blank" rel="noopener noreferrer" className="btn btn-coffee">
               ☕ {t('nav-donate')}
             </a>
+            <Link href="/login" className="btn btn-secondary">
+              {lang === 'ro' ? 'Cont asociație' : 'Association Account'}
+            </Link>
           </div>
 
           <button
