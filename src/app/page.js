@@ -4,38 +4,12 @@ import styles from './page.module.css';
 import AnimalCard from '@/components/AnimalCard';
 import FAQ from '@/components/FAQ';
 import ScrollReveal from '@/components/ScrollReveal';
-import { getAnimals, getAssociations, getStrapiMedia } from '@/lib/api';
+import HeroSearch from '@/components/HeroSearch';
 import { useLang } from '@/lib/LanguageContext';
-import { DEMO_ANIMALS, DEMO_ASSOCIATIONS, DEMO_FAQ, COUNTIES } from '@/data/demo';
-
-function transformStrapiAnimal(strapiAnimal) {
-  const attrs = strapiAnimal;
-  const assoc = attrs.association;
-  const images = attrs.images?.map((img) => getStrapiMedia(img)) || [];
-
-  return {
-    id: attrs.id,
-    name: attrs.name,
-    species: attrs.species === 'caine' ? 'Câine' : attrs.species === 'pisica' ? 'Pisică' : 'Altele',
-    breed: attrs.breed || '',
-    age: attrs.age_category || '',
-    size: attrs.size === 'mic' ? 'Mică' : attrs.size === 'mediu' ? 'Medie' : attrs.size === 'mare' ? 'Mare' : '',
-    gender: attrs.gender === 'mascul' ? 'Mascul' : attrs.gender === 'femela' ? 'Femelă' : '',
-    county: attrs.county || '',
-    images: images.length > 0 ? images : ['https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&q=80'],
-    desc: attrs.description || '',
-    sterilized: attrs.sterilized,
-    vaccinated: attrs.vaccinated,
-    goodWithKids: attrs.good_with_kids,
-    goodWithPets: attrs.good_with_pets,
-    goodForApartment: attrs.house_trained,
-    associationName: assoc?.name || '',
-  };
-}
+import { DEMO_ANIMALS, DEMO_ASSOCIATIONS, DEMO_FAQ } from '@/data/demo';
 
 export default function Home() {
   const { t } = useLang();
-
   const animals = DEMO_ANIMALS;
   const animalCount = DEMO_ANIMALS.length;
   const assocCount = DEMO_ASSOCIATIONS.length;
@@ -57,25 +31,8 @@ export default function Home() {
             <h1 className={styles.heroTitle}>
               {t('hero-title-1')}<span className={styles.highlight}>{t('hero-title-2')}</span>{t('hero-title-3')}
             </h1>
-            <p className={styles.heroLead}>
-              {t('hero-lead')}
-            </p>
-            <div className={styles.heroSearch}>
-              <div className={styles.heroSearchField} style={{ flex: 2 }}>
-                <input type="text" placeholder={t('hero-search-placeholder')} />
-              </div>
-              <div className={styles.heroSearchField} style={{ minWidth: 220 }}>
-                <select defaultValue="">
-                  <option value="">{t('hero-all-counties')}</option>
-                  {COUNTIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <Link href="/adopta" className="btn btn-primary" style={{ padding: '14px 28px', whiteSpace: 'nowrap' }}>
-               {t('hero-search-btn')}
-              </Link>
-            </div>
+            <p className={styles.heroLead}>{t('hero-lead')}</p>
+            <HeroSearch />
             <div className={styles.heroStats}>
               <div className={styles.heroStat}>
                 <div className={styles.heroStatValue}>{animalCount}</div>
@@ -134,17 +91,17 @@ export default function Home() {
         <div className="container">
           <ScrollReveal>
             <div className="section-header">
-              <span className="section-badge">De ce să adopți</span>
-              <h2 className="section-title">Adopția schimbă două vieți</h2>
-              <p className="section-subtitle">A ta și a animalului care așteaptă o a doua șansă</p>
+              <span className="section-badge">{t('badge-why')}</span>
+              <h2 className="section-title">{t('benefits-title')}</h2>
+              <p className="section-subtitle">{t('benefits-sub')}</p>
             </div>
           </ScrollReveal>
           <div className="benefits-grid">
             {[
-              { icon: '❤️', title: 'Salvezi o viață', text: 'Fiecare adopție eliberează un loc în adăpost pentru un alt animal.', bg: 'var(--accent-light)' },
-              { icon: '🏥', title: 'Animale sănătoase', text: 'Animalele vin vaccinate, sterilizate și cu control veterinar.', bg: 'var(--green-light)' },
-              { icon: '😊', title: 'Îți îmbunătățești viața', text: 'Studiile arată că animalele reduc stresul și anxietatea.', bg: 'var(--blue-light)' },
-              { icon: '🤝', title: 'Combati abandonul', text: 'Adopția responsabilă reduce numărul animalelor de pe stradă.', bg: 'var(--yellow-light)' },
+              { icon: '❤️', title: t('b1-title'), text: t('b1-text'), bg: 'var(--accent-light)' },
+              { icon: '🏥', title: t('b2-title'), text: t('b2-text'), bg: 'var(--green-light)' },
+              { icon: '😊', title: t('b3-title'), text: t('b3-text'), bg: 'var(--blue-light)' },
+              { icon: '🤝', title: t('b4-title'), text: t('b4-text'), bg: 'var(--yellow-light)' },
             ].map((b, i) => (
               <ScrollReveal key={i} delay={i}>
                 <div className="benefit-card">
@@ -162,16 +119,16 @@ export default function Home() {
         <div className="container">
           <ScrollReveal>
             <div className="section-header">
-              <span className="section-badge">Cum funcționează</span>
-              <h2 className="section-title">Trei pași simpli</h2>
+              <span className="section-badge">{t('badge-how')}</span>
+              <h2 className="section-title">{t('how-title')}</h2>
             </div>
           </ScrollReveal>
           <div className="steps-container">
             <div className="steps-timeline">
               {[
-                { num: '1', emoji: '🔍', title: 'Caută', text: 'Folosește filtrele pentru a găsi animalul perfect: după județ, specie, vârstă sau talie.', gradient: 'linear-gradient(135deg, var(--accent), var(--accent2))' },
-                { num: '2', emoji: '📞', title: 'Contactează', text: 'Sună direct asociația sau completează formularul de adopție online.', gradient: 'linear-gradient(135deg, var(--yellow), #f59e0b)' },
-                { num: '3', emoji: '🏠', title: 'Adoptă', text: 'Stabilești o întâlnire, cunoști animalul și, dacă e potrivire, îl iei acasă.', gradient: 'linear-gradient(135deg, var(--green), #16a34a)' },
+                { num: '1', emoji: '🔍', title: t('step1-title'), text: t('step1-text'), gradient: 'linear-gradient(135deg, var(--accent), var(--accent2))' },
+                { num: '2', emoji: '📞', title: t('step2-title'), text: t('step2-text'), gradient: 'linear-gradient(135deg, var(--yellow), #f59e0b)' },
+                { num: '3', emoji: '🏠', title: t('step3-title'), text: t('step3-text'), gradient: 'linear-gradient(135deg, var(--green), #16a34a)' },
               ].map((step, i) => (
                 <ScrollReveal key={i} delay={i}>
                   <div className="step-item">
@@ -195,8 +152,8 @@ export default function Home() {
         <div className="container">
           <ScrollReveal>
             <div className="section-header">
-              <span className="section-badge">Întrebări frecvente</span>
-              <h2 className="section-title">Ai întrebări? Avem răspunsuri</h2>
+              <span className="section-badge">{t('badge-faq')}</span>
+              <h2 className="section-title">{t('faq-title')}</h2>
             </div>
           </ScrollReveal>
           <ScrollReveal>
@@ -210,8 +167,8 @@ export default function Home() {
           <ScrollReveal>
             <div className="cta-section">
               <div className="cta-content">
-                <h3>Susține platforma cu o cafea ☕</h3>
-                <p>Adoptino e gratuit pentru toată lumea. Contribuția ta ne ajută să ținem platforma activă.</p>
+                <h3>{t('cta-donate-title')}</h3>
+                <p>{t('cta-donate-text')}</p>
               </div>
               <a href="https://www.buymeacoffee.com/adoptino.ro" target="_blank" rel="noopener noreferrer"
                 className="btn btn-coffee" style={{ fontSize: 17, padding: '18px 36px' }}>
@@ -227,12 +184,12 @@ export default function Home() {
           <ScrollReveal>
             <div className="newsletter-section">
               <div className="newsletter-content">
-                <h3>Abonează-te la newsletter</h3>
-                <p>Primește notificări cu noi animale disponibile pentru adopție.</p>
+                <h3>{t('newsletter-title')}</h3>
+                <p>{t('newsletter-text')}</p>
               </div>
-            <form className="newsletter-form" action="#">
+              <form className="newsletter-form" action="#">
                 <input type="email" placeholder="adresa@email.ro" required />
-                <button type="submit">Abonare</button>
+                <button type="submit">{t('newsletter-btn')}</button>
               </form>
             </div>
           </ScrollReveal>
@@ -247,12 +204,12 @@ export default function Home() {
               textAlign: 'center', border: '1px solid var(--border)'
             }}>
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, marginBottom: 12 }}>
-                Ești asociație de protecție?
+                {t('cta-assoc-title')}
               </h3>
               <p style={{ fontSize: 16, color: 'var(--text2)', marginBottom: 24, maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
-                Alătură-te Adoptino. Listează animale gratuit și găsește-le familii iubitoare.
+                {t('cta-assoc-text')}
               </p>
-              <Link href="/register" className="btn btn-primary">Înscrie asociația</Link>
+              <Link href="/register" className="btn btn-primary">{t('cta-assoc-btn')}</Link>
             </div>
           </ScrollReveal>
         </div>

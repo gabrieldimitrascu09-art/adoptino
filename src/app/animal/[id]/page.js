@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import AnimalCard from '@/components/AnimalCard';
 import { DEMO_ANIMALS, DEMO_ASSOCIATIONS } from '@/data/demo';
 
 export default function AnimalPage() {
@@ -11,7 +12,9 @@ export default function AnimalPage() {
 
   const [imgIndex, setImgIndex] = useState(0);
   const [showAdoptForm, setShowAdoptForm] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [lightbox, setLightbox] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   if (!animal) {
     return (
@@ -36,6 +39,40 @@ export default function AnimalPage() {
     { label: 'Potrivit pentru bloc', value: animal.goodForApartment, icon: '🏢' },
   ];
 
+  // Similar animals: same county or same species, excluding current
+  const similar = DEMO_ANIMALS
+    .filter((a) => a.id !== animal.id && (a.county === animal.county || a.species === animal.species))
+    .slice(0, 3);
+
+  const validateAndSubmit = () => {
+    const name = document.getElementById('adopt-name').value.trim();
+    const phone = document.getElementById('adopt-phone').value.trim();
+    const email = document.getElementById('adopt-email').value.trim();
+    const city = document.getElementById('adopt-city').value.trim();
+    const errors = {};
+
+    if (!name) errors.name = true;
+    if (!city) errors.city = true;
+
+    // Phone: exactly 10 digits
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length !== 10) errors.phone = true;
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    const knownDomains = ['gmail.com','yahoo.com','yahoo.ro','outlook.com','hotmail.com','icloud.com','protonmail.com','mail.com','aol.com','live.com','proton.me','pm.me'];
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (!emailRegex.test(email) || (!knownDomains.includes(domain) && !/\.(ro|org|net|eu|com)$/i.test(domain || ''))) {
+      errors.email = true;
+    }
+
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setShowAdoptForm(false);
+    setShowSuccess(true);
+  };
+
   return (
     <>
       <section style={{ paddingTop: 100, paddingBottom: 60 }}>
@@ -47,36 +84,28 @@ export default function AnimalPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, alignItems: 'start' }}>
             {/* Image Gallery */}
             <div>
-              <div
-                onClick={() => setLightbox(true)}
-                style={{
-                  borderRadius: 'var(--radius)', overflow: 'hidden', cursor: 'pointer',
-                  height: 400, position: 'relative', boxShadow: 'var(--shadow-lg)'
-                }}>
-                <img src={images[imgIndex]} alt={animal.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div onClick={() => setLightbox(true)} style={{
+                borderRadius: 'var(--radius)', overflow: 'hidden', cursor: 'pointer',
+                height: 400, position: 'relative', boxShadow: 'var(--shadow-lg)'
+              }}>
+                <img src={images[imgIndex]} alt={animal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 {images.length > 1 && (
                   <>
                     <button onClick={(e) => { e.stopPropagation(); setImgIndex((imgIndex - 1 + images.length) % images.length); }}
-                      style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      ‹
-                    </button>
+                      style={arrowStyle('left')}>‹</button>
                     <button onClick={(e) => { e.stopPropagation(); setImgIndex((imgIndex + 1) % images.length); }}
-                      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', color: 'white', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      ›
-                    </button>
+                      style={arrowStyle('right')}>›</button>
                   </>
                 )}
               </div>
               {images.length > 1 && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   {images.map((img, i) => (
-                    <div key={i} onClick={() => setImgIndex(i)}
-                      style={{
-                        width: 72, height: 56, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
-                        border: i === imgIndex ? '3px solid var(--accent)' : '3px solid transparent',
-                        opacity: i === imgIndex ? 1 : 0.6, transition: 'all 0.3s'
-                      }}>
+                    <div key={i} onClick={() => setImgIndex(i)} style={{
+                      width: 72, height: 56, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+                      border: i === imgIndex ? '3px solid var(--accent)' : '3px solid transparent',
+                      opacity: i === imgIndex ? 1 : 0.6, transition: 'all 0.3s'
+                    }}>
                       <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   ))}
@@ -90,20 +119,11 @@ export default function AnimalPage() {
                 <span className="badge badge-species">{animal.species}</span>
                 <span className="badge badge-gender">{animal.gender === 'Mascul' ? '♂' : '♀'} {animal.gender}</span>
               </div>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800, marginBottom: 4 }}>
-                {animal.name}
-              </h1>
-              <p style={{ fontSize: 15, color: 'var(--text3)', marginBottom: 16 }}>
-                {animal.breed} · {animal.age} · {animal.size}
-              </p>
-              <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 4 }}>
-                📍 {animal.county}{assoc ? ` · ${assoc.name}` : ''}
-              </p>
-              <p style={{ fontSize: 16, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 24 }}>
-                {animal.desc}
-              </p>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800, marginBottom: 4 }}>{animal.name}</h1>
+              <p style={{ fontSize: 15, color: 'var(--text3)', marginBottom: 16 }}>{animal.breed} · {animal.age} · {animal.size}</p>
+              <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>📍 {animal.county}{assoc ? ` · ${assoc.name}` : ''}</p>
+              <p style={{ fontSize: 16, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 24 }}>{animal.desc}</p>
 
-              {/* Traits */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 24 }}>
                 {traits.map((t, i) => (
                   <div key={i} style={{
@@ -111,93 +131,132 @@ export default function AnimalPage() {
                     borderRadius: 'var(--radius-xs)', fontSize: 13, fontWeight: 600,
                     background: t.value ? 'var(--green-light)' : '#fef2f2',
                     color: t.value ? 'var(--green)' : '#dc2626'
-                  }}>
-                    {t.icon} {t.value ? '✓' : '✕'} {t.label}
-                  </div>
+                  }}>{t.icon} {t.value ? '✓' : '✕'} {t.label}</div>
                 ))}
               </div>
 
-              {/* Action Buttons */}
               <button onClick={() => setShowAdoptForm(true)}
                 className="btn btn-primary" style={{ width: '100%', fontSize: 17, padding: '16px 32px', marginBottom: 12 }}>
                 🐾 Vreau să adopt
               </button>
 
               {assoc && (
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <a href={`tel:${assoc.phone}`} style={{
-                    flex: 1, padding: '12px', borderRadius: 'var(--radius-xs)',
-                    background: 'var(--green-light)', color: 'var(--green)', fontSize: 15,
-                    fontWeight: 600, textAlign: 'center', textDecoration: 'none', border: '2px solid #a7f3d0'
-                  }}>📞 {assoc.phone}</a>
-                  <a href={`mailto:${assoc.email}`} style={{
-                    flex: 1, padding: '12px', borderRadius: 'var(--radius-xs)',
-                    background: 'var(--blue-light)', color: 'var(--blue)', fontSize: 15,
-                    fontWeight: 600, textAlign: 'center', textDecoration: 'none', border: '2px solid #93c5fd'
-                  }}>✉️ Email</a>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+                  <a href={`tel:${assoc.phone}`} style={contactBtnStyle('var(--green-light)', 'var(--green)', '#a7f3d0')}>📞 {assoc.phone}</a>
+                  <a href={`mailto:${assoc.email}`} style={contactBtnStyle('var(--blue-light)', 'var(--blue)', '#93c5fd')}>✉️ Email</a>
                 </div>
               )}
 
-              {/* Association Card */}
+              {/* Association Card - Clickable (punct 3) */}
               {assoc && (
-                <div style={{
-                  marginTop: 24, padding: 20, background: 'var(--surface)',
-                  borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden' }}>
-                      <img src={assoc.image} alt={assoc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700 }}>
-                        {assoc.name} {assoc.verified && <span style={{ color: 'var(--green)' }}>✓</span>}
+                <Link href={`/asociatii/${assoc.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                  <div style={{
+                    padding: 20, background: 'var(--surface)', borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.3s'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden' }}>
+                        <img src={assoc.image} alt={assoc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--text3)' }}>📍 {assoc.county} · Din {assoc.year}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+                          {assoc.name} {assoc.verified && <span style={{ color: 'var(--green)' }}>✓</span>}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>📍 {assoc.county} · Din {assoc.year}</div>
+                      </div>
+                      <span style={{ color: 'var(--accent)', fontSize: 18 }}>→</span>
                     </div>
                   </div>
-                </div>
+                </Link>
               )}
             </div>
           </div>
+
+          {/* Similar Animals (punct 8) */}
+          {similar.length > 0 && (
+            <div style={{ marginTop: 80 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, marginBottom: 24 }}>
+                Alte animale care te-ar putea interesa
+              </h2>
+              <div className="animals-grid">
+                {similar.map((a) => (
+                  <AnimalCard key={a.id} animal={a} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Adoption Form Modal */}
+      {/* Adoption Form Modal (puncte 4, 5) */}
       {showAdoptForm && (
-        <div onClick={() => setShowAdoptForm(false)} style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
-        }}>
-          <div onClick={(e) => e.stopPropagation()} style={{
-            background: 'var(--card)', borderRadius: 'var(--radius)', padding: 32,
-            maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto'
-          }}>
+        <div onClick={() => setShowAdoptForm(false)} style={overlayStyle}>
+          <div onClick={(e) => e.stopPropagation()} style={modalStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700 }}>Cerere de adopție</h2>
-              <button onClick={() => setShowAdoptForm(false)}
-                style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text3)' }}>✕</button>
+              <button onClick={() => setShowAdoptForm(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text3)' }}>✕</button>
             </div>
             <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 20 }}>
               Completează formularul pentru <strong>{animal.name}</strong>. Asociația te va contacta.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <input placeholder="Nume complet *" required style={{ padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none' }} />
-              <input placeholder="Telefon *" required style={{ padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none' }} />
-              <input type="email" placeholder="Email *" required style={{ padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none' }} />
-              <input placeholder="Orașul tău *" required style={{ padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none' }} />
+              <div>
+                <input id="adopt-name" placeholder="Nume complet *" style={inputStyle(formErrors.name)} />
+                {formErrors.name && <span style={errorText}>Numele este obligatoriu</span>}
+              </div>
+              <div>
+                <input id="adopt-phone" placeholder="Telefon (10 cifre) *" style={inputStyle(formErrors.phone)} />
+                {formErrors.phone && <span style={errorText}>Introdu exact 10 cifre</span>}
+              </div>
+              <div>
+                <input id="adopt-email" type="email" placeholder="Email valid *" style={inputStyle(formErrors.email)} />
+                {formErrors.email && <span style={errorText}>Introdu un email valid</span>}
+              </div>
+              <div>
+                <input id="adopt-city" placeholder="Orașul tău *" style={inputStyle(formErrors.city)} />
+                {formErrors.city && <span style={errorText}>Orașul este obligatoriu</span>}
+              </div>
               <select style={{ padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'white' }}>
                 <option value="">Tip locuință</option>
                 <option value="apartament">Apartament</option>
                 <option value="casa">Casă</option>
-                <option value="curte">Casă cu curte</option>
               </select>
               <textarea placeholder="De ce vrei să adopți? Experiență cu animale?" rows={3}
                 style={{ padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none', resize: 'vertical' }} />
               <button className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}
-                onClick={() => { setShowAdoptForm(false); alert('Mulțumim! Asociația te va contacta în curând.'); }}>
+                onClick={validateAndSubmit}>
                 Trimite cererea
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Popup (punct 6) */}
+      {showSuccess && (
+        <div onClick={() => setShowSuccess(false)} style={overlayStyle}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            ...modalStyle, textAlign: 'center', maxWidth: 440, padding: '48px 32px'
+          }}>
+            <div style={{ fontSize: 80, marginBottom: 8, animation: 'pulse 1s ease-in-out' }}>💛</div>
+            <div style={{
+              width: 80, height: 80, margin: '0 auto 20px', borderRadius: '50%',
+              background: 'var(--green-light)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 40, animation: 'fadeUp 0.5s ease'
+            }}>✓</div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, marginBottom: 12, color: 'var(--text)' }}>
+              Felicitări pentru acest pas frumos!
+            </h2>
+            <p style={{ fontSize: 16, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 8 }}>
+              Cererea ta de adopție pentru <strong>{animal.name}</strong> a fost trimisă cu succes.
+            </p>
+            <p style={{ fontSize: 15, color: 'var(--text3)', lineHeight: 1.6, marginBottom: 24 }}>
+              Asociația <strong>{assoc?.name}</strong> te va contacta în curând. Mulțumim că alegi să adopți! 🐾
+            </p>
+            <button onClick={() => setShowSuccess(false)}
+              className="btn btn-primary" style={{ fontSize: 16, padding: '14px 32px' }}>
+              Înapoi la profil
+            </button>
           </div>
         </div>
       )}
@@ -208,27 +267,59 @@ export default function AnimalPage() {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 300,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <button onClick={() => setLightbox(false)}
-            style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: 'white', fontSize: 32, cursor: 'pointer' }}>✕</button>
-          <button onClick={(e) => { e.stopPropagation(); setImgIndex((imgIndex - 1 + images.length) % images.length); }}
-            style={{ position: 'absolute', left: 20, background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', fontSize: 28, width: 50, height: 50, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <button onClick={() => setLightbox(false)} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', color: 'white', fontSize: 32, cursor: 'pointer' }}>✕</button>
+          {images.length > 1 && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); setImgIndex((imgIndex - 1 + images.length) % images.length); }}
+                style={{ ...arrowStyle('left'), position: 'absolute', left: 20, background: 'rgba(255,255,255,0.2)', width: 50, height: 50, fontSize: 28 }}>‹</button>
+              <button onClick={(e) => { e.stopPropagation(); setImgIndex((imgIndex + 1) % images.length); }}
+                style={{ ...arrowStyle('right'), position: 'absolute', right: 20, background: 'rgba(255,255,255,0.2)', width: 50, height: 50, fontSize: 28 }}>›</button>
+            </>
+          )}
           <img src={images[imgIndex]} alt={animal.name} onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: 8 }} />
-          <button onClick={(e) => { e.stopPropagation(); setImgIndex((imgIndex + 1) % images.length); }}
-            style={{ position: 'absolute', right: 20, background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', fontSize: 28, width: 50, height: 50, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-          <div style={{ position: 'absolute', bottom: 20, color: 'white', fontSize: 14 }}>
-            {imgIndex + 1} / {images.length}
-          </div>
+          <div style={{ position: 'absolute', bottom: 20, color: 'white', fontSize: 14 }}>{imgIndex + 1} / {images.length}</div>
         </div>
       )}
 
       <style jsx>{`
         @media (max-width: 768px) {
-          section > div > div:last-of-type {
-            grid-template-columns: 1fr !important;
-          }
+          section > div > div { grid-template-columns: 1fr !important; }
         }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </>
   );
 }
+
+const arrowStyle = (side) => ({
+  position: 'absolute', [side]: 12, top: '50%', transform: 'translateY(-50%)',
+  width: 40, height: 40, borderRadius: '50%', background: 'rgba(0,0,0,0.5)',
+  border: 'none', color: 'white', fontSize: 20, cursor: 'pointer',
+  display: 'flex', alignItems: 'center', justifyContent: 'center'
+});
+
+const overlayStyle = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200,
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+};
+
+const modalStyle = {
+  background: 'var(--card)', borderRadius: 'var(--radius)', padding: 32,
+  maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto'
+};
+
+const inputStyle = (hasError) => ({
+  width: '100%', padding: '12px 16px',
+  border: `2px solid ${hasError ? '#dc2626' : 'var(--border)'}`,
+  borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none'
+});
+
+const errorText = { fontSize: 12, color: '#dc2626', marginTop: 4, display: 'block' };
+
+const contactBtnStyle = (bg, color, border) => ({
+  flex: 1, padding: '12px', borderRadius: 'var(--radius-xs)',
+  background: bg, color: color, fontSize: 15, fontWeight: 600,
+  textAlign: 'center', textDecoration: 'none', border: `2px solid ${border}`
+});

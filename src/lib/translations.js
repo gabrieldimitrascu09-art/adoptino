@@ -10,7 +10,7 @@ export const T = {
   'hero-title-1': { ro: 'Găsește-ți ', en: 'Find your ' },
   'hero-title-2': { ro: 'prietenul', en: 'friend' },
   'hero-title-3': { ro: ' pe viață', en: ' for life' },
-  'hero-lead': { ro: 'Conectăm asociațiile de protecție a animalelor cu oamenii care vor să adopte. Fără profit, doar cu suflet.', en: 'We connect animal protection associations with people who want to adopt. No profit, just heart.' },
+ 'hero-lead': { ro: 'Conectăm asociațiile de protecție a animalelor cu oamenii care vor să adopte. Fără profit, doar cu suflet.', en: 'We connect animal protection associations with people who want to adopt. Purpose over profit.' },
   'hero-search-placeholder': { ro: 'Caută câine, pisică, Rex...', en: 'Search dog, cat, Rex...' },
   'hero-search-btn': { ro: 'Caută', en: 'Search' },
   'hero-all-counties': { ro: 'Toate județele', en: 'All counties' },
