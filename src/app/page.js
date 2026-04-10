@@ -1,9 +1,11 @@
+'use client';
 import Link from 'next/link';
 import styles from './page.module.css';
 import AnimalCard from '@/components/AnimalCard';
 import FAQ from '@/components/FAQ';
 import ScrollReveal from '@/components/ScrollReveal';
 import { getAnimals, getAssociations, getStrapiMedia } from '@/lib/api';
+import { useLang } from '@/lib/LanguageContext';
 import { DEMO_ANIMALS, DEMO_ASSOCIATIONS, DEMO_FAQ, COUNTIES } from '@/data/demo';
 
 function transformStrapiAnimal(strapiAnimal) {
@@ -31,22 +33,12 @@ function transformStrapiAnimal(strapiAnimal) {
   };
 }
 
-export default async function Home() {
-  const animalsData = await getAnimals();
-  const associationsData = await getAssociations();
+export default function Home() {
+  const { t } = useLang();
 
-  let animals = DEMO_ANIMALS;
-  let animalCount = DEMO_ANIMALS.length;
-  let assocCount = DEMO_ASSOCIATIONS.length;
-
-  if (animalsData?.data?.length > 0) {
-    animals = animalsData.data.map((a) => transformStrapiAnimal(a));
-    animalCount = animalsData.meta?.pagination?.total || animals.length;
-  }
-  if (associationsData?.data?.length > 0) {
-    assocCount = associationsData.meta?.pagination?.total || associationsData.data.length;
-  }
-
+  const animals = DEMO_ANIMALS;
+  const animalCount = DEMO_ANIMALS.length;
+  const assocCount = DEMO_ASSOCIATIONS.length;
   const featuredAnimals = animals.slice(0, 6);
 
   return (
@@ -60,38 +52,38 @@ export default async function Home() {
           <div className={styles.heroText}>
             <div className={styles.heroBadge}>
               <span>🐾</span>
-              <span>Platforma de adopții din România</span>
+              <span>{t('hero-badge')}</span>
             </div>
             <h1 className={styles.heroTitle}>
-              Găsește-ți <span className={styles.highlight}>prietenul</span> pe viață
+              {t('hero-title-1')}<span className={styles.highlight}>{t('hero-title-2')}</span>{t('hero-title-3')}
             </h1>
             <p className={styles.heroLead}>
-              Conectăm asociațiile de protecție a animalelor cu oamenii care vor să adopte. Fără profit, doar cu suflet.
+              {t('hero-lead')}
             </p>
             <div className={styles.heroSearch}>
               <div className={styles.heroSearchField} style={{ flex: 2 }}>
-                <input type="text" placeholder="Caută câine, pisică, Rex..." />
+                <input type="text" placeholder={t('hero-search-placeholder')} />
               </div>
               <div className={styles.heroSearchField} style={{ minWidth: 220 }}>
                 <select defaultValue="">
-                  <option value="">Toate județele</option>
+                  <option value="">{t('hero-all-counties')}</option>
                   {COUNTIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
               <Link href="/adopta" className="btn btn-primary" style={{ padding: '14px 28px', whiteSpace: 'nowrap' }}>
-                Caută
+               {t('hero-search-btn')}
               </Link>
             </div>
             <div className={styles.heroStats}>
               <div className={styles.heroStat}>
                 <div className={styles.heroStatValue}>{animalCount}</div>
-                <div className={styles.heroStatLabel}>Animale disponibile</div>
+                <div className={styles.heroStatLabel}>{t('stat-animals')}</div>
               </div>
               <div className={styles.heroStat}>
                 <div className={styles.heroStatValue}>{assocCount}</div>
-                <div className={styles.heroStatLabel}>Asociații partenere</div>
+                <div className={styles.heroStatLabel}>{t('stat-assoc')}</div>
               </div>
             </div>
           </div>
@@ -124,10 +116,10 @@ export default async function Home() {
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
             <ScrollReveal>
-              <h2 className="section-title">Animale care așteaptă o familie</h2>
+              <h2 className="section-title">{t('section-animals')}</h2>
             </ScrollReveal>
             <Link href="/adopta" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 700, color: 'var(--accent)' }}>
-              Vezi toate →
+              {t('see-all')}
             </Link>
           </div>
           <div className="animals-grid">

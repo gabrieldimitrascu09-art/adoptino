@@ -71,3 +71,19 @@
   .navMenu, .navActions { display: none; }
   .burger { display: flex; }
 }
+.langBtn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+}
+.langBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

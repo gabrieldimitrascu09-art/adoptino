@@ -22,7 +22,7 @@ export default function AnimalCard({ animal }) {
   };
 
   return (
-    <div className="animal-card">
+    <div className="animal-card" onClick={() => window.location.href = `/animal/${animal.id}`}>
       <div className="animal-card-image">
         <img src={images[imgIndex] || '/placeholder.jpg'} alt={animal.name} loading="lazy" />
         <div className="animal-card-badges">

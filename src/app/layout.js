@@ -2,7 +2,8 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import BMCButton from '@/components/BMCButton';
-
+import CookieBanner from '@/components/CookieBanner';
+import { LanguageProvider } from '@/lib/LanguageContext';
 export const metadata = {
   title: 'Adoptino — Platforma de adopții animale din România',
   description: 'Conectăm asociațiile de protecție cu oamenii care vor să adopte. Gratuit, mereu.',
@@ -34,13 +35,16 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body>
+    <body>
+        <LanguageProvider>
         <Navbar />
         <main className="main-content">
           {children}
         </main>
         <Footer />
         <BMCButton />
+        <CookieBanner />
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -1,11 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useLang } from '@/lib/LanguageContext';
 import styles from './Navbar.module.css';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { lang, toggleLang, t } = useLang();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -24,12 +26,12 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { href: '/', label: 'Acasă' },
-    { href: '/adopta', label: 'Adoptă' },
-    { href: '/asociatii', label: 'Asociații' },
-    { href: '/articole', label: 'Articole' },
-    { href: '/implica-te', label: 'Implică-te' },
-    { href: '/despre', label: 'Despre' },
+    { href: '/', label: t('nav-home') },
+    { href: '/adopta', label: t('nav-adopt') },
+    { href: '/asociatii', label: t('nav-assoc') },
+    { href: '/articole', label: t('nav-articles') },
+    { href: '/implica-te', label: t('nav-involve') },
+    { href: '/despre', label: t('nav-about') },
   ];
 
   return (
@@ -50,8 +52,11 @@ export default function Navbar() {
           </div>
 
           <div className={styles.navActions}>
+            <button onClick={toggleLang} className={styles.langBtn}>
+              {lang === 'ro' ? 'EN' : 'RO'}
+            </button>
             <a href="https://www.buymeacoffee.com/adoptino.ro" target="_blank" rel="noopener noreferrer" className="btn btn-coffee">
-              ☕ Donează
+              ☕ {t('nav-donate')}
             </a>
           </div>
 
@@ -73,8 +78,15 @@ export default function Navbar() {
         ))}
         <div className={styles.divider}></div>
         <div className={styles.mobileActions}>
+          <button onClick={toggleLang} style={{
+            padding: '12px 20px', borderRadius: 'var(--radius-xs)', fontSize: 14, fontWeight: 700,
+            border: '2px solid var(--border)', background: 'transparent', color: 'var(--text2)',
+            cursor: 'pointer', width: '100%'
+          }}>
+            {lang === 'ro' ? '🇬🇧 English' : '🇷🇴 Română'}
+          </button>
           <a href="https://www.buymeacoffee.com/adoptino.ro" target="_blank" rel="noopener noreferrer" className="btn btn-coffee btn-full">
-            ☕ Susține platforma
+            ☕ {lang === 'ro' ? 'Susține platforma' : 'Support us'}
           </a>
         </div>
       </div>
