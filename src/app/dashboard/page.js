@@ -1,85 +1,356 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { getAuth, logout } from '@/lib/auth';
+
+const API_URL = 'https://api.adoptino.ro';
 
 export default function DashboardPage() {
   const [user, setUser] = useState(null);
+  const [animals, setAnimals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingAnimal, setEditingAnimal] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [tab, setTab] = useState('animals');
+  const [profile, setProfile] = useState({ name: '', description: '', phone: '', website: '', avatar: null });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const fileInputRef = useRef(null);
+  const avatarInputRef = useRef(null);
   const router = useRouter();
 
   useEffect(() => {
     const auth = getAuth();
-    if (!auth) {
-      router.push('/login');
-      return;
-    }
+    if (!auth) { router.push('/login'); return; }
     setUser(auth.user);
+    fetchAnimals(auth.jwt);
+    const saved = localStorage.getItem('adoptino-profile');
+    if (saved) try { setProfile(JSON.parse(saved)); } catch {}
+    else setProfile(p => ({ ...p, name: auth.user.username || '' }));
   }, [router]);
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
+  const fetchAnimals = async (jwt) => {
+    try {
+      const res = await fetch(`${API_URL}/api/animals?populate=images&pagination[pageSize]=100`, { headers: { Authorization: `Bearer ${jwt}` } });
+      const data = await res.json();
+      setAnimals(data.data || []);
+    } catch (err) { console.error(err); }
+    setLoading(false);
   };
 
-  if (!user) {
-    return (
-      <div style={{ paddingTop: 120, textAlign: 'center' }}>
-        <p style={{ color: 'var(--text2)' }}>Se încarcă...</p>
-      </div>
-    );
-  }
+  const handleLogout = () => { logout(); router.push('/'); };
+
+  const uploadImages = async (files, jwt) => {
+    const ids = [];
+    for (const file of files) {
+      const fd = new FormData(); fd.append('files', file);
+      try {
+        const res = await fetch(`${API_URL}/api/upload`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: fd });
+        const data = await res.json();
+        if (data?.[0]) ids.push(data[0].id);
+      } catch (err) { console.error(err); }
+    }
+    return ids;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setSaving(true); setMessage('');
+    const auth = getAuth(); const form = e.target;
+    let imageIds = [];
+    if (selectedImages.length > 0) { setUploading(true); imageIds = await uploadImages(selectedImages, auth.jwt); setUploading(false); }
+    const body = { data: {
+      name: form.name.value, species: form.species.value, breed: form.breed.value || null,
+      age_category: form.age_category.value || null, size: form.size.value || null, gender: form.gender.value || null,
+      county: form.county.value, description: form.description.value, adoption_status: form.adoption_status?.value || 'disponibil',
+      sterilized: form.sterilized.checked, vaccinated: form.vaccinated.checked, good_with_kids: form.good_with_kids.checked,
+      good_with_pets: form.good_with_pets.checked, house_trained: form.house_trained.checked,
+    }};
+    if (imageIds.length > 0) body.data.images = imageIds;
+    try {
+      const url = editingAnimal ? `${API_URL}/api/animals/${editingAnimal.documentId}` : `${API_URL}/api/animals`;
+      const res = await fetch(url, { method: editingAnimal ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.error) setMessage('❌ ' + (data.error.message || 'Eroare.'));
+      else { setMessage(editingAnimal ? '✅ Animal actualizat!' : '✅ Animal adăugat!'); setShowForm(false); setEditingAnimal(null); setSelectedImages([]); fetchAnimals(auth.jwt); }
+    } catch { setMessage('❌ Eroare de conexiune.'); }
+    setSaving(false);
+  };
+
+  const handleStatusChange = async (animal, newStatus) => {
+    const auth = getAuth();
+    try { await fetch(`${API_URL}/api/animals/${animal.documentId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` }, body: JSON.stringify({ data: { adoption_status: newStatus } }) });
+      setMessage(`✅ ${animal.name} — ${sLabel[newStatus]}`); fetchAnimals(auth.jwt);
+    } catch { setMessage('❌ Eroare.'); }
+  };
+
+  const handleDelist = async (animal) => {
+    if (!confirm(`Delistezi ${animal.name}? Nu va mai fi vizibil public, dar rămâne în cont.`)) return;
+    const auth = getAuth();
+    try { await fetch(`${API_URL}/api/animals/${animal.documentId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` }, body: JSON.stringify({ data: { adoption_status: 'delistat' } }) });
+      setMessage(`✅ ${animal.name} a fost delistat.`); fetchAnimals(auth.jwt);
+    } catch { setMessage('❌ Eroare.'); }
+  };
+
+  const handleDelete = async (animal) => {
+    if (!confirm(`⚠️ Ștergi definitiv ${animal.name}? Această acțiune nu poate fi anulată.`)) return;
+    const auth = getAuth();
+    try { await fetch(`${API_URL}/api/animals/${animal.documentId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${auth.jwt}` } });
+      setMessage(`🗑️ ${animal.name} a fost șters.`); fetchAnimals(auth.jwt);
+    } catch { setMessage('❌ Eroare la ștergere.'); }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm('⚠️ Ești sigur? Contul și toate datele vor fi șterse definitiv.')) return;
+    localStorage.removeItem('adoptino-jwt'); localStorage.removeItem('adoptino-user'); localStorage.removeItem('adoptino-profile');
+    setMessage('Contul a fost marcat pentru ștergere. Vei fi deconectat.');
+    setTimeout(() => { logout(); router.push('/'); }, 2000);
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const newProfile = { ...profile, avatar: ev.target.result };
+      setProfile(newProfile);
+      localStorage.setItem('adoptino-profile', JSON.stringify(newProfile));
+      setMessage('✅ Avatar actualizat!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = () => {
+    setSavingProfile(true);
+    localStorage.setItem('adoptino-profile', JSON.stringify(profile));
+    setMessage('✅ Profil salvat!');
+    setSavingProfile(false);
+  };
+
+  const handleImageSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 5) { setMessage('Maximum 5 fotografii.'); return; }
+    setSelectedImages(files);
+  };
+
+  if (!user) return <div style={{ paddingTop: 120, textAlign: 'center' }}><p>Se încarcă...</p></div>;
+
+  const counties = ['București','Alba','Arad','Argeș','Bacău','Bihor','Bistrița-Năsăud','Botoșani','Brașov','Brăila','Buzău','Caraș-Severin','Călărași','Cluj','Constanța','Covasna','Dâmbovița','Dolj','Galați','Giurgiu','Gorj','Harghita','Hunedoara','Ialomița','Iași','Ilfov','Maramureș','Mehedinți','Mureș','Neamț','Olt','Prahova','Satu Mare','Sălaj','Sibiu','Suceava','Teleorman','Timiș','Tulcea','Vaslui','Vâlcea','Vrancea'];
+  const sLabel = { disponibil: '🟢 Disponibil', rezervat: '🟡 Rezervat', adoptat: '🔵 Adoptat', delistat: '⚫ Delistat' };
+  const sColor = { disponibil: { bg: '#dcfce7', c: '#16a34a', b: '#a7f3d0' }, rezervat: { bg: '#fef3c7', c: '#b45309', b: '#fde68a' }, adoptat: { bg: '#dbeafe', c: '#2563eb', b: '#93c5fd' }, delistat: { bg: '#f3f4f6', c: '#6b7280', b: '#d1d5db' } };
+
+  const byStatus = (s) => animals.filter(a => (a.adoption_status || 'disponibil') === s);
 
   return (
     <section className="section" style={{ paddingTop: 120 }}>
-      <div className="container" style={{ maxWidth: 800 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-          <div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, marginBottom: 4 }}>
-              Bine ai venit! 👋
-            </h1>
-            <p style={{ color: 'var(--text2)', fontSize: 15 }}>
-              Conectat ca <strong>{user.email}</strong>
-            </p>
+      <div className="container" style={{ maxWidth: 960 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div onClick={() => avatarInputRef.current?.click()} style={{
+              width: 56, height: 56, borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
+              background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              border: '3px solid var(--accent-light)', position: 'relative'
+            }}>
+              {profile.avatar ? <img src={profile.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ color: 'white', fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)' }}>{(profile.name || user.email)[0].toUpperCase()}</span>}
+              <div style={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'white', border: '2px solid white' }}>✎</div>
+            </div>
+            <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
+            <div>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, marginBottom: 2 }}>{profile.name || 'Dashboard'}</h1>
+              <p style={{ color: 'var(--text3)', fontSize: 14 }}>{user.email}</p>
+            </div>
           </div>
-          <button onClick={handleLogout} className="btn btn-secondary">
-            Deconectare
-          </button>
+          <button onClick={handleLogout} className="btn btn-secondary" style={{ fontSize: 14 }}>Deconectare</button>
         </div>
 
-        <div style={{
-          background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 32,
-          border: '1px solid var(--border)', textAlign: 'center', marginBottom: 24
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🚧</div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, marginBottom: 12 }}>
-            Dashboard în construcție
-          </h2>
-          <p style={{ color: 'var(--text2)', fontSize: 15, lineHeight: 1.7, maxWidth: 480, margin: '0 auto 24px' }}>
-            Lucrăm la panoul de administrare unde vei putea adăuga și gestiona animalele asociației tale. Între timp, poți adăuga animale direct din panoul Strapi.
-          </p>
-          <a href="https://api.adoptino.ro/admin" target="_blank" rel="noopener noreferrer"
-            className="btn btn-primary" style={{ fontSize: 16, padding: '14px 28px' }}>
-            Deschide Strapi Admin →
-          </a>
+        {/* Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+          {[{ n: byStatus('disponibil').length, l: 'Disponibile', bg: '#dcfce7', c: '#16a34a' },
+            { n: byStatus('rezervat').length, l: 'Rezervate', bg: '#fef3c7', c: '#b45309' },
+            { n: byStatus('adoptat').length, l: 'Adoptate', bg: '#dbeafe', c: '#2563eb' },
+            { n: byStatus('delistat').length, l: 'Delistate', bg: '#f3f4f6', c: '#6b7280' }
+          ].map((s, i) => (
+            <div key={i} style={{ background: s.bg, borderRadius: 'var(--radius-sm)', padding: '16px 12px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, color: s.c }}>{s.n}</div>
+              <div style={{ fontSize: 12, color: s.c, fontWeight: 600 }}>{s.l}</div>
+            </div>
+          ))}
         </div>
 
-        <div style={{
-          background: 'var(--card)', borderRadius: 'var(--radius)', padding: 24,
-          border: '1px solid var(--border)'
-        }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 12 }}>
-            Ce vei putea face în curând:
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {['Adăuga animale cu poze și descrieri', 'Edita sau șterge anunțuri existente', 'Vedea cererile de adopție primite', 'Actualiza profilul asociației'].map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, color: 'var(--text2)' }}>
-                <span style={{ color: 'var(--accent)' }}>◻</span> {item}
+        {message && <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-xs)', marginBottom: 20, fontSize: 14, fontWeight: 600, background: message.includes('❌') || message.includes('🗑️') ? '#fef2f2' : 'var(--green-light)', color: message.includes('❌') ? '#dc2626' : message.includes('🗑️') ? '#b45309' : 'var(--green)' }}>{message}</div>}
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--surface)', borderRadius: 'var(--radius-xs)', padding: 4 }}>
+          {[{ k: 'animals', l: '🐾 Animale' }, { k: 'profile', l: '📋 Profil' }, { k: 'settings', l: '⚙️ Setări' }].map(t => (
+            <button key={t.k} onClick={() => setTab(t.k)} style={{
+              flex: 1, padding: '12px 16px', borderRadius: 'var(--radius-xs)', border: 'none',
+              background: tab === t.k ? 'var(--card)' : 'transparent', boxShadow: tab === t.k ? 'var(--shadow)' : 'none',
+              fontWeight: 700, fontSize: 14, cursor: 'pointer', color: tab === t.k ? 'var(--text)' : 'var(--text3)', fontFamily: 'var(--font)', transition: 'all 0.3s'
+            }}>{t.l}</button>
+          ))}
+        </div>
+
+        {/* PROFILE TAB */}
+        {tab === 'profile' && (
+          <div style={{ background: 'linear-gradient(135deg, var(--accent-light), var(--yellow-light))', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+            {/* Profile Header */}
+            <div style={{ padding: '40px 32px 24px', textAlign: 'center', position: 'relative' }}>
+              <div onClick={() => avatarInputRef.current?.click()} style={{
+                width: 96, height: 96, borderRadius: 24, margin: '0 auto 16px', overflow: 'hidden', cursor: 'pointer',
+                border: '4px solid white', boxShadow: 'var(--shadow-lg)', position: 'relative'
+              }}>
+                {profile.avatar ? <img src={profile.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ color: 'white', fontSize: 40, fontWeight: 800, fontFamily: 'var(--font-display)' }}>{(profile.name || 'A')[0].toUpperCase()}</span></div>}
+                <div style={{ position: 'absolute', bottom: 4, right: 4, width: 28, height: 28, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'white', border: '3px solid white', cursor: 'pointer' }}>📷</div>
               </div>
-            ))}
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{profile.name || 'Asociația ta'}</h2>
+              <p style={{ fontSize: 14, color: 'var(--text2)' }}>{user.email}</p>
+            </div>
+            {/* Profile Form */}
+            <div style={{ background: 'var(--card)', borderRadius: 'var(--radius) var(--radius) 0 0', padding: 32 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div><label style={lbl}>Numele asociației</label><input value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} placeholder="Numele complet" style={inp} /></div>
+                  <div><label style={lbl}>Telefon</label><input value={profile.phone} onChange={e => setProfile({ ...profile, phone: e.target.value })} placeholder="07xx xxx xxx" style={inp} /></div>
+                </div>
+                <div><label style={lbl}>Website</label><input value={profile.website} onChange={e => setProfile({ ...profile, website: e.target.value })} placeholder="https://asociatia.ro" style={inp} /></div>
+                <div><label style={lbl}>Despre asociație</label>
+                  <textarea value={profile.description} onChange={e => setProfile({ ...profile, description: e.target.value })} placeholder="Povestește despre misiunea și activitatea asociației tale..." rows={5} style={{ ...inp, resize: 'vertical' }} /></div>
+                <button onClick={handleSaveProfile} className="btn btn-primary" disabled={savingProfile} style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}>
+                  {savingProfile ? 'Se salvează...' : '💾 Salvează profilul'}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* SETTINGS TAB */}
+        {tab === 'settings' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ background: 'var(--card)', borderRadius: 'var(--radius)', padding: 24, border: '1px solid var(--border)' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>🔗 Strapi Admin</h3>
+              <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 16 }}>Accesează panoul de administrare avansat pentru funcționalități suplimentare.</p>
+              <a href="https://api.adoptino.ro/admin" target="_blank" rel="noopener noreferrer" className="btn btn-secondary">Deschide Strapi Admin →</a>
+            </div>
+            <div style={{ background: '#fef2f2', borderRadius: 'var(--radius)', padding: 24, border: '1px solid #fecaca' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8, color: '#dc2626' }}>⚠️ Zona periculoasă</h3>
+              <p style={{ fontSize: 14, color: '#b91c1c', marginBottom: 16 }}>Ștergerea contului este permanentă. Toate datele asociate vor fi pierdute.</p>
+              {!showDeleteAccount ? (
+                <button onClick={() => setShowDeleteAccount(true)} style={{ padding: '10px 20px', borderRadius: 'var(--radius-xs)', border: '2px solid #fecaca', background: 'white', color: '#dc2626', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Șterge contul</button>
+              ) : (
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <p style={{ fontSize: 14, color: '#dc2626', fontWeight: 700 }}>Ești absolut sigur?</p>
+                  <button onClick={handleDeleteAccount} style={{ padding: '10px 20px', borderRadius: 'var(--radius-xs)', border: 'none', background: '#dc2626', color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Da, șterge definitiv</button>
+                  <button onClick={() => setShowDeleteAccount(false)} style={{ padding: '10px 20px', borderRadius: 'var(--radius-xs)', border: '2px solid var(--border)', background: 'white', color: 'var(--text2)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Anulează</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ANIMALS TAB */}
+        {tab === 'animals' && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>Animale ({animals.length})</h2>
+              <button onClick={() => { setShowForm(true); setEditingAnimal(null); setSelectedImages([]); }} className="btn btn-primary">+ Adaugă animal</button>
+            </div>
+
+            {showForm && (
+              <div style={{ background: 'var(--card)', borderRadius: 'var(--radius)', padding: 32, border: '1px solid var(--border)', marginBottom: 24, boxShadow: 'var(--shadow)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>{editingAnimal ? `Editează ${editingAnimal.name}` : '🐾 Animal nou'}</h3>
+                  <button onClick={() => { setShowForm(false); setEditingAnimal(null); }} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text3)' }}>✕</button>
+                </div>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div><label style={lbl}>Nume *</label><input name="name" required defaultValue={editingAnimal?.name || ''} placeholder="ex: Rex" style={inp} /></div>
+                    <div><label style={lbl}>Specie *</label><select name="species" required defaultValue={editingAnimal?.species || ''} style={inp}><option value="">Selectează...</option><option value="caine">Câine</option><option value="pisica">Pisică</option><option value="alt">Altele</option></select></div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                    <div><label style={lbl}>Rasă</label><input name="breed" defaultValue={editingAnimal?.breed || ''} placeholder="ex: Labrador mix" style={inp} /></div>
+                    <div><label style={lbl}>Vârstă</label><select name="age_category" defaultValue={editingAnimal?.age_category || ''} style={inp}><option value="">Selectează...</option><option value="pui">Pui</option><option value="tanar">Tânăr</option><option value="adult">Adult</option><option value="senior">Senior</option></select></div>
+                    <div><label style={lbl}>Talie</label><select name="size" defaultValue={editingAnimal?.size || ''} style={inp}><option value="">Selectează...</option><option value="mic">Mică</option><option value="mediu">Medie</option><option value="mare">Mare</option></select></div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                    <div><label style={lbl}>Gen</label><select name="gender" defaultValue={editingAnimal?.gender || ''} style={inp}><option value="">Selectează...</option><option value="mascul">Mascul</option><option value="femela">Femelă</option></select></div>
+                    <div><label style={lbl}>Județ *</label><select name="county" required defaultValue={editingAnimal?.county || ''} style={inp}><option value="">Selectează...</option>{counties.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                    <div><label style={lbl}>Status</label><select name="adoption_status" defaultValue={editingAnimal?.adoption_status || 'disponibil'} style={inp}><option value="disponibil">🟢 Disponibil</option><option value="rezervat">🟡 Rezervat</option><option value="adoptat">🔵 Adoptat</option></select></div>
+                  </div>
+                  <div><label style={lbl}>Descriere</label><textarea name="description" rows={3} defaultValue={editingAnimal?.description || ''} placeholder="Descrie personalitatea animalului..." style={{ ...inp, resize: 'vertical' }} /></div>
+                  <div>
+                    <label style={lbl}>Fotografii (max 5)</label>
+                    <div onClick={() => fileInputRef.current?.click()} style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius-xs)', padding: 24, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)' }}>
+                      <div style={{ fontSize: 32, marginBottom: 8 }}>📸</div>
+                      <p style={{ fontSize: 14, color: 'var(--text2)', fontWeight: 600 }}>{selectedImages.length > 0 ? `${selectedImages.length} fotografie(i) selectate` : 'Click pentru a selecta'}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>JPG, PNG — max 5 poze</p>
+                    </div>
+                    <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageSelect} style={{ display: 'none' }} />
+                    {selectedImages.length > 0 && <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>{selectedImages.map((f, i) => <div key={i} style={{ width: 72, height: 72, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--border)' }}><img src={URL.createObjectURL(f)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>)}</div>}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, padding: 16, background: 'var(--surface)', borderRadius: 'var(--radius-xs)' }}>
+                    {[{ n: 'sterilized', l: 'Sterilizat', d: editingAnimal?.sterilized }, { n: 'vaccinated', l: 'Vaccinat', d: editingAnimal?.vaccinated }, { n: 'good_with_kids', l: 'Bun cu copiii', d: editingAnimal?.good_with_kids }, { n: 'good_with_pets', l: 'Bun cu alte animale', d: editingAnimal?.good_with_pets }, { n: 'house_trained', l: 'Potrivit pentru bloc', d: editingAnimal?.house_trained }].map(ch => (
+                      <label key={ch.n} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: 'var(--text2)', cursor: 'pointer' }}><input type="checkbox" name={ch.n} defaultChecked={ch.d || false} style={{ width: 18, height: 18, accentColor: 'var(--accent)' }} />{ch.l}</label>
+                    ))}
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={saving || uploading} style={{ width: '100%', fontSize: 16, padding: '14px 28px', opacity: (saving || uploading) ? 0.7 : 1 }}>
+                    {uploading ? '📸 Se încarcă pozele...' : saving ? 'Se salvează...' : editingAnimal ? 'Actualizează' : 'Adaugă animalul'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {loading ? <p style={{ textAlign: 'center', padding: 40, color: 'var(--text2)' }}>Se încarcă...</p>
+            : animals.length === 0 ? (
+              <div style={{ background: 'var(--card)', borderRadius: 'var(--radius)', padding: 48, border: '1px solid var(--border)', textAlign: 'center' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>🐾</div>
+                <p style={{ color: 'var(--text2)', marginBottom: 16 }}>Nu ai niciun animal adăugat.</p>
+                <button onClick={() => { setShowForm(true); setEditingAnimal(null); }} className="btn btn-primary">+ Adaugă primul animal</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {animals.map((animal) => {
+                  const st = animal.adoption_status || 'disponibil';
+                  const sc = sColor[st] || sColor.disponibil;
+                  return (
+                    <div key={animal.id} style={{ background: 'var(--card)', borderRadius: 'var(--radius-sm)', padding: 16, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 200 }}>
+                        {animal.images?.[0] ? (
+                          <div style={{ width: 60, height: 60, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
+                            <img src={animal.images[0].url?.startsWith('http') ? animal.images[0].url : `${API_URL}${animal.images[0].url}`} alt={animal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        ) : <div style={{ width: 60, height: 60, borderRadius: 12, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>🐾</div>}
+                        <div>
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700 }}>{animal.name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text3)' }}>{animal.species === 'caine' ? 'Câine' : animal.species === 'pisica' ? 'Pisică' : 'Altele'} · {animal.county}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <select value={st} onChange={(e) => handleStatusChange(animal, e.target.value)}
+                          style={{ padding: '6px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: `2px solid ${sc.b}`, background: sc.bg, color: sc.c, cursor: 'pointer' }}>
+                          <option value="disponibil">🟢 Disponibil</option><option value="rezervat">🟡 Rezervat</option><option value="adoptat">🔵 Adoptat</option>
+                        </select>
+                        <button onClick={() => handleEdit(animal)} style={btnSm('var(--border)', 'white', 'var(--text2)')}>✏️</button>
+                        <button onClick={() => handleDelist(animal)} style={btnSm('#d1d5db', '#f3f4f6', '#6b7280')} title="Delistează">👁‍🗨</button>
+                        <button onClick={() => handleDelete(animal)} style={btnSm('#fecaca', '#fef2f2', '#dc2626')} title="Șterge">🗑️</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </section>
   );
 }
+
+const lbl = { display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 };
+const inp = { width: '100%', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none', background: 'var(--surface)' };
+const btnSm = (b, bg, c) => ({ padding: '6px 10px', borderRadius: 6, border: `2px solid ${b}`, background: bg, color: c, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' });
