@@ -13,7 +13,7 @@ export default function AsociatiiPage() {
             <p className="section-subtitle">Organizații verificate care salvează vieți în fiecare zi</p>
           </div>
         </ScrollReveal>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: 24 }}>
           {DEMO_ASSOCIATIONS.map((assoc) => (
             <ScrollReveal key={assoc.id}>
               <Link href={`/asociatii/${assoc.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>

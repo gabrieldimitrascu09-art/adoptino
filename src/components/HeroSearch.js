@@ -24,7 +24,7 @@ export default function HeroSearch() {
   return (
     <div style={{
       background: 'var(--card)', borderRadius: 'var(--radius)', padding: 8,
-      boxShadow: 'var(--shadow-lg)', display: 'flex', gap: 8
+      boxShadow: 'var(--shadow-lg)', display: 'flex', gap: 8, flexWrap: 'wrap'
     }}>
       <div style={{
         flex: 2, display: 'flex', alignItems: 'center', gap: 10,
@@ -38,7 +38,7 @@ export default function HeroSearch() {
         />
       </div>
       <div style={{
-        minWidth: 220, display: 'flex', alignItems: 'center', gap: 10,
+        flex: '1 1 150px', display: 'flex', alignItems: 'center', gap: 10,
         padding: '12px 16px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)',
         border: '2px solid transparent'
       }}>
