@@ -82,44 +82,38 @@ export default function DashboardPage() {
 
   const handleStatusChange = async (animal, newStatus) => {
     const auth = getAuth();
-    try { await fetch(`${API_URL}/api/animals/${animal.documentId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` }, body: JSON.stringify({ data: { adoption_status: newStatus } }) });
-      setMessage(`✅ ${animal.name} — ${sLabel[newStatus]}`); fetchAnimals(auth.jwt);
-    } catch { setMessage('❌ Eroare.'); }
-  };
-
-  const handleDelist = async (animal) => {
-    if (!confirm(`Delistezi ${animal.name}? Nu va mai fi vizibil public, dar rămâne în cont.`)) return;
-    const auth = getAuth();
-    try { await fetch(`${API_URL}/api/animals/${animal.documentId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` }, body: JSON.stringify({ data: { adoption_status: 'delistat' } }) });
-      setMessage(`✅ ${animal.name} a fost delistat.`); fetchAnimals(auth.jwt);
+    try {
+      await fetch(`${API_URL}/api/animals/${animal.documentId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` }, body: JSON.stringify({ data: { adoption_status: newStatus } }) });
+      setMessage(`✅ ${animal.name} — ${sLabel[newStatus]}`);
+      fetchAnimals(auth.jwt);
     } catch { setMessage('❌ Eroare.'); }
   };
 
   const handleDelete = async (animal) => {
     if (!confirm(`⚠️ Ștergi definitiv ${animal.name}? Această acțiune nu poate fi anulată.`)) return;
     const auth = getAuth();
-    try { await fetch(`${API_URL}/api/animals/${animal.documentId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${auth.jwt}` } });
-      setMessage(`🗑️ ${animal.name} a fost șters.`); fetchAnimals(auth.jwt);
+    try {
+      await fetch(`${API_URL}/api/animals/${animal.documentId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${auth.jwt}` } });
+      setMessage(`✅ ${animal.name} a fost șters.`);
+      fetchAnimals(auth.jwt);
     } catch { setMessage('❌ Eroare la ștergere.'); }
+  };
+
+  const handleEdit = (animal) => {
+    setEditingAnimal(animal); setSelectedImages([]); setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteAccount = async () => {
     if (!confirm('⚠️ Ești sigur? Contul și toate datele vor fi șterse definitiv.')) return;
     localStorage.removeItem('adoptino-jwt'); localStorage.removeItem('adoptino-user'); localStorage.removeItem('adoptino-profile');
-    setMessage('Contul a fost marcat pentru ștergere. Vei fi deconectat.');
-    setTimeout(() => { logout(); router.push('/'); }, 2000);
+    setTimeout(() => { logout(); router.push('/'); }, 1000);
   };
 
   const handleAvatarChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const newProfile = { ...profile, avatar: ev.target.result };
-      setProfile(newProfile);
-      localStorage.setItem('adoptino-profile', JSON.stringify(newProfile));
-      setMessage('✅ Avatar actualizat!');
-    };
+    reader.onload = (ev) => { const np = { ...profile, avatar: ev.target.result }; setProfile(np); localStorage.setItem('adoptino-profile', JSON.stringify(np)); setMessage('✅ Avatar actualizat!'); };
     reader.readAsDataURL(file);
   };
 
@@ -132,31 +126,27 @@ export default function DashboardPage() {
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
-    if (files.length > 5) { setMessage('Maximum 5 fotografii.'); return; }
+    if (files.length > 5) { setMessage('❌ Maximum 5 fotografii.'); return; }
     setSelectedImages(files);
   };
 
   if (!user) return <div style={{ paddingTop: 120, textAlign: 'center' }}><p>Se încarcă...</p></div>;
 
   const counties = ['București','Alba','Arad','Argeș','Bacău','Bihor','Bistrița-Năsăud','Botoșani','Brașov','Brăila','Buzău','Caraș-Severin','Călărași','Cluj','Constanța','Covasna','Dâmbovița','Dolj','Galați','Giurgiu','Gorj','Harghita','Hunedoara','Ialomița','Iași','Ilfov','Maramureș','Mehedinți','Mureș','Neamț','Olt','Prahova','Satu Mare','Sălaj','Sibiu','Suceava','Teleorman','Timiș','Tulcea','Vaslui','Vâlcea','Vrancea'];
-  const sLabel = { disponibil: '🟢 Disponibil', rezervat: '🟡 Rezervat', adoptat: '🔵 Adoptat', delistat: '⚫ Delistat' };
+  const sLabel = { disponibil: 'Disponibil', rezervat: 'Rezervat', adoptat: 'Adoptat', delistat: 'Delistat' };
   const sColor = { disponibil: { bg: '#dcfce7', c: '#16a34a', b: '#a7f3d0' }, rezervat: { bg: '#fef3c7', c: '#b45309', b: '#fde68a' }, adoptat: { bg: '#dbeafe', c: '#2563eb', b: '#93c5fd' }, delistat: { bg: '#f3f4f6', c: '#6b7280', b: '#d1d5db' } };
-
   const byStatus = (s) => animals.filter(a => (a.adoption_status || 'disponibil') === s);
 
   return (
     <section className="section" style={{ paddingTop: 120 }}>
       <div className="container" style={{ maxWidth: 960 }}>
+        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div onClick={() => avatarInputRef.current?.click()} style={{
-              width: 56, height: 56, borderRadius: 16, overflow: 'hidden', cursor: 'pointer',
-              background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              border: '3px solid var(--accent-light)', position: 'relative'
-            }}>
-              {profile.avatar ? <img src={profile.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <div onClick={() => avatarInputRef.current?.click()} style={{ width: 56, height: 56, borderRadius: 16, overflow: 'hidden', cursor: 'pointer', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid var(--accent-light)', position: 'relative' }}>
+              {profile.avatar ? <img src={profile.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <span style={{ color: 'white', fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-display)' }}>{(profile.name || user.email)[0].toUpperCase()}</span>}
-              <div style={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'white', border: '2px solid white' }}>✎</div>
+              <div style={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'white', border: '2px solid white' }}>✎</div>
             </div>
             <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} />
             <div>
@@ -169,10 +159,10 @@ export default function DashboardPage() {
 
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-          {[{ n: byStatus('disponibil').length, l: 'Disponibile', bg: '#dcfce7', c: '#16a34a' },
-            { n: byStatus('rezervat').length, l: 'Rezervate', bg: '#fef3c7', c: '#b45309' },
-            { n: byStatus('adoptat').length, l: 'Adoptate', bg: '#dbeafe', c: '#2563eb' },
-            { n: byStatus('delistat').length, l: 'Delistate', bg: '#f3f4f6', c: '#6b7280' }
+          {[{ n: byStatus('disponibil').length, l: 'Disponibile', bg: '#dcfce7', c: '#16a34a', icon: '●' },
+            { n: byStatus('rezervat').length, l: 'Rezervate', bg: '#fef3c7', c: '#b45309', icon: '●' },
+            { n: byStatus('adoptat').length, l: 'Adoptate', bg: '#dbeafe', c: '#2563eb', icon: '●' },
+            { n: byStatus('delistat').length, l: 'Delistate', bg: '#f3f4f6', c: '#6b7280', icon: '●' }
           ].map((s, i) => (
             <div key={i} style={{ background: s.bg, borderRadius: 'var(--radius-sm)', padding: '16px 12px', textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, color: s.c }}>{s.n}</div>
@@ -181,11 +171,11 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {message && <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-xs)', marginBottom: 20, fontSize: 14, fontWeight: 600, background: message.includes('❌') || message.includes('🗑️') ? '#fef2f2' : 'var(--green-light)', color: message.includes('❌') ? '#dc2626' : message.includes('🗑️') ? '#b45309' : 'var(--green)' }}>{message}</div>}
+        {message && <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-xs)', marginBottom: 20, fontSize: 14, fontWeight: 600, background: message.includes('❌') ? '#fef2f2' : 'var(--green-light)', color: message.includes('❌') ? '#dc2626' : 'var(--green)' }}>{message}</div>}
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--surface)', borderRadius: 'var(--radius-xs)', padding: 4 }}>
-          {[{ k: 'animals', l: '🐾 Animale' }, { k: 'profile', l: '📋 Profil' }, { k: 'settings', l: '⚙️ Setări' }].map(t => (
+          {[{ k: 'animals', l: 'Animale' }, { k: 'profile', l: 'Profil' }, { k: 'settings', l: 'Setări' }].map(t => (
             <button key={t.k} onClick={() => setTab(t.k)} style={{
               flex: 1, padding: '12px 16px', borderRadius: 'var(--radius-xs)', border: 'none',
               background: tab === t.k ? 'var(--card)' : 'transparent', boxShadow: tab === t.k ? 'var(--shadow)' : 'none',
@@ -197,21 +187,15 @@ export default function DashboardPage() {
         {/* PROFILE TAB */}
         {tab === 'profile' && (
           <div style={{ background: 'linear-gradient(135deg, var(--accent-light), var(--yellow-light))', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-            {/* Profile Header */}
-            <div style={{ padding: '40px 32px 24px', textAlign: 'center', position: 'relative' }}>
-              <div onClick={() => avatarInputRef.current?.click()} style={{
-                width: 96, height: 96, borderRadius: 24, margin: '0 auto 16px', overflow: 'hidden', cursor: 'pointer',
-                border: '4px solid white', boxShadow: 'var(--shadow-lg)', position: 'relative'
-              }}>
-                {profile.avatar ? <img src={profile.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ color: 'white', fontSize: 40, fontWeight: 800, fontFamily: 'var(--font-display)' }}>{(profile.name || 'A')[0].toUpperCase()}</span></div>}
-                <div style={{ position: 'absolute', bottom: 4, right: 4, width: 28, height: 28, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'white', border: '3px solid white', cursor: 'pointer' }}>📷</div>
+            <div style={{ padding: '40px 32px 24px', textAlign: 'center' }}>
+              <div onClick={() => avatarInputRef.current?.click()} style={{ width: 96, height: 96, borderRadius: 24, margin: '0 auto 16px', overflow: 'hidden', cursor: 'pointer', border: '4px solid white', boxShadow: 'var(--shadow-lg)', position: 'relative' }}>
+                {profile.avatar ? <img src={profile.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, var(--accent), var(--accent2))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ color: 'white', fontSize: 40, fontWeight: 800, fontFamily: 'var(--font-display)' }}>{(profile.name || 'A')[0].toUpperCase()}</span></div>}
+                <div style={{ position: 'absolute', bottom: 4, right: 4, width: 28, height: 28, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'white', border: '3px solid white' }}>✎</div>
               </div>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, marginBottom: 4 }}>{profile.name || 'Asociația ta'}</h2>
               <p style={{ fontSize: 14, color: 'var(--text2)' }}>{user.email}</p>
             </div>
-            {/* Profile Form */}
             <div style={{ background: 'var(--card)', borderRadius: 'var(--radius) var(--radius) 0 0', padding: 32 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -219,11 +203,8 @@ export default function DashboardPage() {
                   <div><label style={lbl}>Telefon</label><input value={profile.phone} onChange={e => setProfile({ ...profile, phone: e.target.value })} placeholder="07xx xxx xxx" style={inp} /></div>
                 </div>
                 <div><label style={lbl}>Website</label><input value={profile.website} onChange={e => setProfile({ ...profile, website: e.target.value })} placeholder="https://asociatia.ro" style={inp} /></div>
-                <div><label style={lbl}>Despre asociație</label>
-                  <textarea value={profile.description} onChange={e => setProfile({ ...profile, description: e.target.value })} placeholder="Povestește despre misiunea și activitatea asociației tale..." rows={5} style={{ ...inp, resize: 'vertical' }} /></div>
-                <button onClick={handleSaveProfile} className="btn btn-primary" disabled={savingProfile} style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}>
-                  {savingProfile ? 'Se salvează...' : '💾 Salvează profilul'}
-                </button>
+                <div><label style={lbl}>Despre asociație</label><textarea value={profile.description} onChange={e => setProfile({ ...profile, description: e.target.value })} placeholder="Povestește despre misiunea asociației..." rows={5} style={{ ...inp, resize: 'vertical' }} /></div>
+                <button onClick={handleSaveProfile} className="btn btn-primary" disabled={savingProfile} style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}>{savingProfile ? 'Se salvează...' : 'Salvează profilul'}</button>
               </div>
             </div>
           </div>
@@ -231,25 +212,18 @@ export default function DashboardPage() {
 
         {/* SETTINGS TAB */}
         {tab === 'settings' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ background: 'var(--card)', borderRadius: 'var(--radius)', padding: 24, border: '1px solid var(--border)' }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8 }}>🔗 Strapi Admin</h3>
-              <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 16 }}>Accesează panoul de administrare avansat pentru funcționalități suplimentare.</p>
-              <a href="https://api.adoptino.ro/admin" target="_blank" rel="noopener noreferrer" className="btn btn-secondary">Deschide Strapi Admin →</a>
-            </div>
-            <div style={{ background: '#fef2f2', borderRadius: 'var(--radius)', padding: 24, border: '1px solid #fecaca' }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8, color: '#dc2626' }}>⚠️ Zona periculoasă</h3>
-              <p style={{ fontSize: 14, color: '#b91c1c', marginBottom: 16 }}>Ștergerea contului este permanentă. Toate datele asociate vor fi pierdute.</p>
-              {!showDeleteAccount ? (
-                <button onClick={() => setShowDeleteAccount(true)} style={{ padding: '10px 20px', borderRadius: 'var(--radius-xs)', border: '2px solid #fecaca', background: 'white', color: '#dc2626', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Șterge contul</button>
-              ) : (
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <p style={{ fontSize: 14, color: '#dc2626', fontWeight: 700 }}>Ești absolut sigur?</p>
-                  <button onClick={handleDeleteAccount} style={{ padding: '10px 20px', borderRadius: 'var(--radius-xs)', border: 'none', background: '#dc2626', color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Da, șterge definitiv</button>
-                  <button onClick={() => setShowDeleteAccount(false)} style={{ padding: '10px 20px', borderRadius: 'var(--radius-xs)', border: '2px solid var(--border)', background: 'white', color: 'var(--text2)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Anulează</button>
-                </div>
-              )}
-            </div>
+          <div style={{ background: '#fef2f2', borderRadius: 'var(--radius)', padding: 24, border: '1px solid #fecaca' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, marginBottom: 8, color: '#dc2626' }}>Zona periculoasă</h3>
+            <p style={{ fontSize: 14, color: '#b91c1c', marginBottom: 16 }}>Ștergerea contului este permanentă. Toate datele asociate vor fi pierdute.</p>
+            {!showDeleteAccount ? (
+              <button onClick={() => setShowDeleteAccount(true)} style={{ padding: '10px 20px', borderRadius: 'var(--radius-xs)', border: '2px solid #fecaca', background: 'white', color: '#dc2626', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Șterge contul</button>
+            ) : (
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <p style={{ fontSize: 14, color: '#dc2626', fontWeight: 700 }}>Ești absolut sigur?</p>
+                <button onClick={handleDeleteAccount} style={{ padding: '10px 20px', borderRadius: 'var(--radius-xs)', border: 'none', background: '#dc2626', color: 'white', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Da, șterge definitiv</button>
+                <button onClick={() => setShowDeleteAccount(false)} style={{ padding: '10px 20px', borderRadius: 'var(--radius-xs)', border: '2px solid var(--border)', background: 'white', color: 'var(--text2)', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Anulează</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -264,7 +238,7 @@ export default function DashboardPage() {
             {showForm && (
               <div style={{ background: 'var(--card)', borderRadius: 'var(--radius)', padding: 32, border: '1px solid var(--border)', marginBottom: 24, boxShadow: 'var(--shadow)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>{editingAnimal ? `Editează ${editingAnimal.name}` : '🐾 Animal nou'}</h3>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>{editingAnimal ? `Editează ${editingAnimal.name}` : 'Animal nou'}</h3>
                   <button onClick={() => { setShowForm(false); setEditingAnimal(null); }} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text3)' }}>✕</button>
                 </div>
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -280,15 +254,14 @@ export default function DashboardPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                     <div><label style={lbl}>Gen</label><select name="gender" defaultValue={editingAnimal?.gender || ''} style={inp}><option value="">Selectează...</option><option value="mascul">Mascul</option><option value="femela">Femelă</option></select></div>
                     <div><label style={lbl}>Județ *</label><select name="county" required defaultValue={editingAnimal?.county || ''} style={inp}><option value="">Selectează...</option>{counties.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                    <div><label style={lbl}>Status</label><select name="adoption_status" defaultValue={editingAnimal?.adoption_status || 'disponibil'} style={inp}><option value="disponibil">🟢 Disponibil</option><option value="rezervat">🟡 Rezervat</option><option value="adoptat">🔵 Adoptat</option></select></div>
+                    <div><label style={lbl}>Status</label><select name="adoption_status" defaultValue={editingAnimal?.adoption_status || 'disponibil'} style={inp}><option value="disponibil">Disponibil</option><option value="rezervat">Rezervat</option><option value="adoptat">Adoptat</option></select></div>
                   </div>
                   <div><label style={lbl}>Descriere</label><textarea name="description" rows={3} defaultValue={editingAnimal?.description || ''} placeholder="Descrie personalitatea animalului..." style={{ ...inp, resize: 'vertical' }} /></div>
                   <div>
                     <label style={lbl}>Fotografii (max 5)</label>
                     <div onClick={() => fileInputRef.current?.click()} style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius-xs)', padding: 24, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)' }}>
-                      <div style={{ fontSize: 32, marginBottom: 8 }}>📸</div>
-                      <p style={{ fontSize: 14, color: 'var(--text2)', fontWeight: 600 }}>{selectedImages.length > 0 ? `${selectedImages.length} fotografie(i) selectate` : 'Click pentru a selecta'}</p>
-                      <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>JPG, PNG — max 5 poze</p>
+                      <div style={{ fontSize: 32, marginBottom: 8 }}>+</div>
+                      <p style={{ fontSize: 14, color: 'var(--text2)', fontWeight: 600 }}>{selectedImages.length > 0 ? `${selectedImages.length} fotografie(i) selectate` : 'Click pentru a selecta fotografii'}</p>
                     </div>
                     <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageSelect} style={{ display: 'none' }} />
                     {selectedImages.length > 0 && <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>{selectedImages.map((f, i) => <div key={i} style={{ width: 72, height: 72, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--border)' }}><img src={URL.createObjectURL(f)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>)}</div>}
@@ -299,7 +272,7 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   <button type="submit" className="btn btn-primary" disabled={saving || uploading} style={{ width: '100%', fontSize: 16, padding: '14px 28px', opacity: (saving || uploading) ? 0.7 : 1 }}>
-                    {uploading ? '📸 Se încarcă pozele...' : saving ? 'Se salvează...' : editingAnimal ? 'Actualizează' : 'Adaugă animalul'}
+                    {uploading ? 'Se încarcă pozele...' : saving ? 'Se salvează...' : editingAnimal ? 'Actualizează' : 'Adaugă animalul'}
                   </button>
                 </form>
               </div>
@@ -308,8 +281,7 @@ export default function DashboardPage() {
             {loading ? <p style={{ textAlign: 'center', padding: 40, color: 'var(--text2)' }}>Se încarcă...</p>
             : animals.length === 0 ? (
               <div style={{ background: 'var(--card)', borderRadius: 'var(--radius)', padding: 48, border: '1px solid var(--border)', textAlign: 'center' }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🐾</div>
-                <p style={{ color: 'var(--text2)', marginBottom: 16 }}>Nu ai niciun animal adăugat.</p>
+                <p style={{ color: 'var(--text2)', fontSize: 18, marginBottom: 16 }}>Nu ai niciun animal adăugat.</p>
                 <button onClick={() => { setShowForm(true); setEditingAnimal(null); }} className="btn btn-primary">+ Adaugă primul animal</button>
               </div>
             ) : (
@@ -317,27 +289,33 @@ export default function DashboardPage() {
                 {animals.map((animal) => {
                   const st = animal.adoption_status || 'disponibil';
                   const sc = sColor[st] || sColor.disponibil;
+                  const isDelistat = st === 'delistat';
                   return (
-                    <div key={animal.id} style={{ background: 'var(--card)', borderRadius: 'var(--radius-sm)', padding: 16, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                    <div key={animal.id} style={{ background: isDelistat ? '#f9fafb' : 'var(--card)', borderRadius: 'var(--radius-sm)', padding: 16, border: `1px solid ${isDelistat ? '#e5e7eb' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, opacity: isDelistat ? 0.6 : 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 200 }}>
-                        {animal.images?.[0] ? (
-                          <div style={{ width: 60, height: 60, borderRadius: 12, overflow: 'hidden', flexShrink: 0 }}>
-                            <img src={animal.images[0].url?.startsWith('http') ? animal.images[0].url : `${API_URL}${animal.images[0].url}`} alt={animal.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          </div>
-                        ) : <div style={{ width: 60, height: 60, borderRadius: 12, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>🐾</div>}
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          {animal.images?.[0] ? (
+                            <div style={{ width: 56, height: 56, borderRadius: 12, overflow: 'hidden' }}>
+                              <img src={animal.images[0].url?.startsWith('http') ? animal.images[0].url : `${API_URL}${animal.images[0].url}`} alt={animal.name} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isDelistat ? 'grayscale(1)' : 'none' }} />
+                            </div>
+                          ) : <div style={{ width: 56, height: 56, borderRadius: 12, background: 'var(--accent-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🐾</div>}
+                          {isDelistat && <div style={{ position: 'absolute', top: -4, right: -4, width: 22, height: 22, borderRadius: '50%', background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'white', fontWeight: 800, border: '2px solid white' }}>✕</div>}
+                        </div>
                         <div>
-                          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700 }}>{animal.name}</div>
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: isDelistat ? '#9ca3af' : 'var(--text)', textDecoration: isDelistat ? 'line-through' : 'none' }}>{animal.name}</div>
                           <div style={{ fontSize: 12, color: 'var(--text3)' }}>{animal.species === 'caine' ? 'Câine' : animal.species === 'pisica' ? 'Pisică' : 'Altele'} · {animal.county}</div>
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <select value={st} onChange={(e) => handleStatusChange(animal, e.target.value)}
                           style={{ padding: '6px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700, border: `2px solid ${sc.b}`, background: sc.bg, color: sc.c, cursor: 'pointer' }}>
-                          <option value="disponibil">🟢 Disponibil</option><option value="rezervat">🟡 Rezervat</option><option value="adoptat">🔵 Adoptat</option>
+                          <option value="disponibil">● Disponibil</option>
+                          <option value="rezervat">● Rezervat</option>
+                          <option value="adoptat">● Adoptat</option>
+                          <option value="delistat">✕ Delistat</option>
                         </select>
-                        <button onClick={() => handleEdit(animal)} style={btnSm('var(--border)', 'white', 'var(--text2)')}>✏️</button>
-                        <button onClick={() => handleDelist(animal)} style={btnSm('#d1d5db', '#f3f4f6', '#6b7280')} title="Delistează">👁‍🗨</button>
-                        <button onClick={() => handleDelete(animal)} style={btnSm('#fecaca', '#fef2f2', '#dc2626')} title="Șterge">🗑️</button>
+                        <button onClick={() => handleEdit(animal)} title="Editează" style={{ padding: '6px 12px', borderRadius: 6, border: '2px solid var(--border)', background: 'white', color: 'var(--accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Edit</button>
+                        <button onClick={() => handleDelete(animal)} title="Șterge definitiv" style={{ padding: '6px 12px', borderRadius: 6, border: '2px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Șterge</button>
                       </div>
                     </div>
                   );
@@ -353,4 +331,3 @@ export default function DashboardPage() {
 
 const lbl = { display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 6 };
 const inp = { width: '100%', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none', background: 'var(--surface)' };
-const btnSm = (b, bg, c) => ({ padding: '6px 10px', borderRadius: 6, border: `2px solid ${b}`, background: bg, color: c, fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' });
