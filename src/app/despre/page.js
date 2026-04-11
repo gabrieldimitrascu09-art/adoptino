@@ -40,12 +40,12 @@ export default function DesprePage() {
               Valorile noastre
             </h2>
           </ScrollReveal>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20 }}>
             {values.map((val, i) => (
               <ScrollReveal key={i} delay={i}>
                 <div style={{
                   background: 'var(--card)', borderRadius: 'var(--radius)', padding: 28,
-                  border: '1px solid var(--border)', transition: 'all 0.3s'
+                  border: '1px solid var(--border)', transition: 'all 0.3s', height: '100%'
                 }}>
                   <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                     {val.icon} {val.title}
