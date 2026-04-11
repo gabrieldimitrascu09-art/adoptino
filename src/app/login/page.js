@@ -1,14 +1,31 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { loginUser, saveAuth } from '@/lib/auth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    alert('Demo: Autentificare reușită! Funcționalitatea completă vine în curând.');
+    setError('');
+    setLoading(true);
+
+    const result = await loginUser(email, password);
+    setLoading(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    saveAuth(result.jwt, result.user);
+    router.push('/dashboard');
   };
 
   return (
@@ -30,6 +47,13 @@ export default function LoginPage() {
           <p style={{ fontSize: 15, color: 'var(--text2)' }}>Intră în cont pentru a gestiona anunțurile.</p>
         </div>
 
+        {error && (
+          <div style={{
+            padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca',
+            borderRadius: 'var(--radius-xs)', color: '#dc2626', fontSize: 14, marginBottom: 16, textAlign: 'center'
+          }}>{error}</div>
+        )}
+
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={labelStyle}>Email</label>
@@ -41,8 +65,9 @@ export default function LoginPage() {
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••" required style={inputStyle} />
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}>
-            Autentificare
+          <button type="submit" className="btn btn-primary" disabled={loading}
+            style={{ width: '100%', fontSize: 16, padding: '14px 28px', opacity: loading ? 0.7 : 1 }}>
+            {loading ? 'Se autentifică...' : 'Autentificare'}
           </button>
         </form>
 

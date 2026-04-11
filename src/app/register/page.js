@@ -1,12 +1,49 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { registerUser, saveAuth } from '@/lib/auth';
 import { COUNTIES } from '@/data/demo';
 
 export default function RegisterPage() {
-  const handleRegister = (e) => {
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const handleRegister = async (e) => {
     e.preventDefault();
-    alert('Demo: Cont creat cu succes! Vei fi contactat pentru verificare.');
+    setError('');
+
+    const form = e.target;
+    const email = form.email.value;
+    const password = form.password.value;
+    const confirmPassword = form.confirmPassword.value;
+    const assocName = form.assocName.value;
+
+    if (password !== confirmPassword) {
+      setError('Parolele nu coincid.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Parola trebuie să aibă minim 8 caractere.');
+      return;
+    }
+
+    setLoading(true);
+    const result = await registerUser({
+      username: assocName,
+      email,
+      password,
+    });
+    setLoading(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    saveAuth(result.jwt, result.user);
+    router.push('/dashboard');
   };
 
   return (
@@ -28,29 +65,36 @@ export default function RegisterPage() {
           <p style={{ fontSize: 15, color: 'var(--text2)' }}>Creează un cont pentru a lista animale pe platformă.</p>
         </div>
 
+        {error && (
+          <div style={{
+            padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca',
+            borderRadius: 'var(--radius-xs)', color: '#dc2626', fontSize: 14, marginBottom: 16, textAlign: 'center'
+          }}>{error}</div>
+        )}
+
         <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={labelStyle}>Numele asociației *</label>
-            <input type="text" placeholder="ex: Asociația Prietenii Animalelor" required style={inputStyle} />
+            <input name="assocName" type="text" placeholder="ex: Asociația Prietenii Animalelor" required style={inputStyle} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <label style={labelStyle}>Email *</label>
-              <input type="email" placeholder="contact@asociatia.ro" required style={inputStyle} />
+              <input name="email" type="email" placeholder="contact@asociatia.ro" required style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Telefon *</label>
-              <input type="tel" placeholder="07xx xxx xxx" required style={inputStyle} />
+              <input name="phone" type="tel" placeholder="07xx xxx xxx" required style={inputStyle} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <label style={labelStyle}>Persoană contact *</label>
-              <input type="text" placeholder="Nume complet" required style={inputStyle} />
+              <input name="contact" type="text" placeholder="Nume complet" required style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Județ *</label>
-              <select required style={inputStyle}>
+              <select name="county" required style={inputStyle}>
                 <option value="">Selectează...</option>
                 {COUNTIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -58,21 +102,21 @@ export default function RegisterPage() {
           </div>
           <div>
             <label style={labelStyle}>Website (opțional)</label>
-            <input type="url" placeholder="https://asociatia.ro" style={inputStyle} />
+            <input name="website" type="url" placeholder="https://asociatia.ro" style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Descriere *</label>
-            <textarea placeholder="Descrieți pe scurt activitatea asociației..." rows={3} required
+            <textarea name="description" placeholder="Descrieți pe scurt activitatea asociației..." rows={3} required
               style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
               <label style={labelStyle}>Parolă *</label>
-              <input type="password" placeholder="Min. 8 caractere" required style={inputStyle} />
+              <input name="password" type="password" placeholder="Min. 8 caractere" required style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Confirmă parola *</label>
-              <input type="password" placeholder="••••••••" required style={inputStyle} />
+              <input name="confirmPassword" type="password" placeholder="••••••••" required style={inputStyle} />
             </div>
           </div>
 
@@ -82,8 +126,9 @@ export default function RegisterPage() {
             <Link href="/confidentialitate" style={{ color: 'var(--accent)', fontWeight: 600 }}>Politica de Confidențialitate</Link>.
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}>
-            Creează contul
+          <button type="submit" className="btn btn-primary" disabled={loading}
+            style={{ width: '100%', fontSize: 16, padding: '14px 28px', opacity: loading ? 0.7 : 1 }}>
+            {loading ? 'Se creează contul...' : 'Creează contul'}
           </button>
         </form>
 
