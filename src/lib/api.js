@@ -1,9 +1,11 @@
+import qs from 'qs';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.adoptino.ro';
 
 export async function fetchAPI(endpoint, params = {}) {
-  const queryString = new URLSearchParams(params).toString();
-  const url = `${API_URL}/api${endpoint}${queryString ? `?${queryString}` : ''}`;
-  
+  const queryString = qs.stringify(params, { encodeValuesOnly: true });
+  const url = `${API_URL}/api${endpoint}${queryString ? '?' + queryString : ''}`;
+
   try {
     const res = await fetch(url, { next: { revalidate: 60 } });
     if (!res.ok) return null;
@@ -16,22 +18,42 @@ export async function fetchAPI(endpoint, params = {}) {
 }
 
 export async function getAnimals(params = {}) {
-  const defaultParams = { 'populate': 'images,association', 'pagination[pageSize]': '100' };
+  const defaultParams = {
+    populate: {
+      images: true,
+      association: {
+        populate: { logo: true }
+      }
+    },
+    pagination: { pageSize: 100 },
+    filters: {
+      adoption_status: { $eq: 'disponibil' }
+    }
+  };
   return fetchAPI('/animals', { ...defaultParams, ...params });
 }
 
 export async function getAssociations(params = {}) {
-  const defaultParams = { 'populate': 'logo', 'pagination[pageSize]': '100' };
+  const defaultParams = {
+    populate: { logo: true },
+    pagination: { pageSize: 100 }
+  };
   return fetchAPI('/associations', { ...defaultParams, ...params });
 }
 
 export async function getArticles(params = {}) {
-  const defaultParams = { 'populate': 'cover_image', 'pagination[pageSize]': '100' };
+  const defaultParams = {
+    populate: { cover_image: true },
+    pagination: { pageSize: 100 }
+  };
   return fetchAPI('/articles', { ...defaultParams, ...params });
 }
 
 export async function getFAQs(params = {}) {
-  const defaultParams = { 'sort': 'order:asc', 'pagination[pageSize]': '100' };
+  const defaultParams = {
+    sort: 'order:asc',
+    pagination: { pageSize: 100 }
+  };
   return fetchAPI('/faqs', { ...defaultParams, ...params });
 }
 

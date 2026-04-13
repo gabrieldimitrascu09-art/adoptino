@@ -1,36 +1,81 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import AnimalCard from '@/components/AnimalCard';
-import { DEMO_ANIMALS, COUNTIES } from '@/data/demo';
+import { getAnimals, getStrapiMedia } from '@/lib/api';
+import { COUNTIES } from '@/data/demo';
+
+function mapStrapiAnimal(item) {
+  const a = item.attributes || item;
+  const images = Array.isArray(a.images)
+    ? a.images.map((img) => img.url).filter(Boolean)
+    : [];
+ const assocData = a.association?.data || a.association;
+  const assoc = assocData && assocData.id ? assocData : null;
+
+  return {
+    id: item.id,
+    name: a.name || '',
+    species: a.species || '',
+    breed: a.breed || '',
+    age: a.age_category || '',
+    size: a.size || '',
+    county: a.county || '',
+    gender: a.gender || '',
+    description: a.description || '',
+    image: images[0] || '/placeholder-animal.jpg',
+    images: images.length > 0 ? images : ['/placeholder-animal.jpg'],
+    sterilized: a.sterilized || false,
+    vaccinated: a.vaccinated || false,
+    association: assoc ? {
+      id: assoc.id,
+      name: assoc.name || '',
+      county: assoc.county || '',
+    } : null,
+  };
+}
 
 export default function AdoptaPage() {
+  const [allAnimals, setAllAnimals] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [county, setCounty] = useState('');
   const [species, setSpecies] = useState('');
   const [age, setAge] = useState('');
   const [size, setSize] = useState('');
 
-  const filtered = useMemo(() => {
-    return DEMO_ANIMALS.filter((a) => {
-      const searchLower = search.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const nameLower = a.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const breedLower = a.breed.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const speciesLower = a.species.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  useEffect(() => {
+    async function load() {
+      const res = await getAnimals();
+      if (res?.data) {
+        setAllAnimals(res.data.map(mapStrapiAnimal));
+      }
+      setLoading(false);
+    }
+    load();
+  }, []);
 
-      if (search && !nameLower.includes(searchLower) && !breedLower.includes(searchLower) && !speciesLower.includes(searchLower)) return false;
+  const filtered = useMemo(() => {
+    return allAnimals.filter((a) => {
+      const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const searchN = normalize(search);
+
+      if (search && !normalize(a.name).includes(searchN) && !normalize(a.breed).includes(searchN) && !normalize(a.species).includes(searchN)) return false;
       if (county && a.county !== county) return false;
-      if (species && a.species !== species) return false;
-      if (size && a.size !== size) return false;
+      if (species) {
+        const speciesMap = { 'Câine': 'caine', 'Pisică': 'pisica', 'Altele': 'alt' };
+        if (a.species !== species && a.species !== speciesMap[species]) return false;
+      }
+      if (size) {
+        const sizeMap = { 'Mică': 'mic', 'Medie': 'mediu', 'Mare': 'mare' };
+        if (a.size !== size && a.size !== sizeMap[size]) return false;
+      }
       if (age) {
-        const ageNum = parseFloat(a.age);
-        if (age === '0-1' && ageNum >= 1) return false;
-        if (age === '1-3' && (ageNum < 1 || ageNum > 3)) return false;
-        if (age === '3-6' && (ageNum < 3 || ageNum > 6)) return false;
-        if (age === '6+' && ageNum < 6) return false;
+        const ageMap = { '0-1': 'pui', '1-3': 'tanar', '3-6': 'adult', '6+': 'senior' };
+        if (a.age !== ageMap[age]) return false;
       }
       return true;
     });
-  }, [search, county, species, age, size]);
+  }, [allAnimals, search, county, species, age, size]);
 
   const clearFilters = () => {
     setSearch(''); setCounty(''); setSpecies(''); setAge(''); setSize('');
@@ -43,7 +88,7 @@ export default function AdoptaPage() {
           Adoptă un prieten
         </h1>
         <p style={{ color: 'var(--text2)', marginBottom: 24 }}>
-          {filtered.length} {filtered.length === 1 ? 'animal disponibil' : 'animale disponibile'}
+          {loading ? 'Se încarcă...' : `${filtered.length} ${filtered.length === 1 ? 'animal disponibil' : 'animale disponibile'}`}
         </p>
 
         <div style={{
@@ -51,17 +96,9 @@ export default function AdoptaPage() {
           background: 'var(--card)', padding: 16, borderRadius: 'var(--radius-sm)',
           border: '1px solid var(--border)'
         }}>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="🔍 Caută: câine, pisică, Rex..."
-            style={{
-              flex: '2 1 200px', padding: '12px 16px', border: '2px solid var(--border)',
-              borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none',
-              background: 'var(--surface)', transition: 'border-color 0.3s'
-            }}
-          />
+            style={{ flex: '2 1 200px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none', background: 'var(--surface)', transition: 'border-color 0.3s' }} />
           <select value={county} onChange={(e) => setCounty(e.target.value)}
             style={{ flex: '1 1 150px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'var(--surface)', cursor: 'pointer' }}>
             <option value="">Toate județele</option>
@@ -70,36 +107,34 @@ export default function AdoptaPage() {
           <select value={species} onChange={(e) => setSpecies(e.target.value)}
             style={{ flex: '1 1 130px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'var(--surface)', cursor: 'pointer' }}>
             <option value="">Tip animal</option>
-            <option value="Câine">🐕 Câine</option>
-            <option value="Pisică">🐱 Pisică</option>
-            <option value="Altele">🐰 Altele</option>
+            <option value="caine">🐕 Câine</option>
+            <option value="pisica">🐱 Pisică</option>
+            <option value="alt">🐰 Altele</option>
           </select>
           <select value={age} onChange={(e) => setAge(e.target.value)}
             style={{ flex: '1 1 120px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'var(--surface)', cursor: 'pointer' }}>
             <option value="">Vârstă</option>
-            <option value="0-1">Sub 1 an</option>
-            <option value="1-3">1-3 ani</option>
-            <option value="3-6">3-6 ani</option>
-            <option value="6+">Peste 6 ani</option>
+            <option value="0-1">Pui</option>
+            <option value="1-3">Tânăr</option>
+            <option value="3-6">Adult</option>
+            <option value="6+">Senior</option>
           </select>
           <select value={size} onChange={(e) => setSize(e.target.value)}
             style={{ flex: '1 1 120px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'var(--surface)', cursor: 'pointer' }}>
             <option value="">Talie</option>
-            <option value="Mică">Mică</option>
-            <option value="Medie">Medie</option>
-            <option value="Mare">Mare</option>
+            <option value="mic">Mică</option>
+            <option value="mediu">Medie</option>
+            <option value="mare">Mare</option>
           </select>
           <button onClick={clearFilters}
-            style={{
-              padding: '12px 20px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)',
-              background: 'transparent', fontSize: 14, fontWeight: 700, color: 'var(--text2)',
-              cursor: 'pointer', transition: 'all 0.3s', whiteSpace: 'nowrap'
-            }}>
+            style={{ padding: '12px 20px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', background: 'transparent', fontSize: 14, fontWeight: 700, color: 'var(--text2)', cursor: 'pointer', transition: 'all 0.3s', whiteSpace: 'nowrap' }}>
             ✕ Șterge filtre
           </button>
         </div>
 
-        {filtered.length > 0 ? (
+        {loading ? (
+          <p style={{ textAlign: 'center', color: 'var(--text2)', padding: 60 }}>Se încarcă animalele...</p>
+        ) : filtered.length > 0 ? (
           <div className="animals-grid">
             {filtered.map((animal) => (
               <AnimalCard key={animal.id} animal={animal} />
@@ -109,7 +144,7 @@ export default function AdoptaPage() {
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 64, marginBottom: 16 }}>🔍</div>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>Niciun rezultat</h3>
-            <p style={{ color: 'var(--text2)' }}>Încearcă să modifici filtrele de căutare.</p>
+            <p style={{ color: 'var(--text2)' }}>Încă nu sunt animale pe platformă sau filtrele sunt prea restrictive.</p>
           </div>
         )}
       </div>

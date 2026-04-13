@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from './page.module.css';
 import AnimalCard from '@/components/AnimalCard';
@@ -6,13 +7,80 @@ import FAQ from '@/components/FAQ';
 import ScrollReveal from '@/components/ScrollReveal';
 import HeroSearch from '@/components/HeroSearch';
 import { useLang } from '@/lib/LanguageContext';
-import { DEMO_ANIMALS, DEMO_ASSOCIATIONS, DEMO_FAQ } from '@/data/demo';
+import { getAnimals, getAssociations, getFAQs, getStrapiMedia } from '@/lib/api';
+
+// Funcție care transformă un animal din formatul Strapi în formatul pe care AnimalCard îl așteaptă
+function mapStrapiAnimal(item) {
+  const a = item.attributes || item;
+ const images = Array.isArray(a.images)
+    ? a.images.map((img) => img.url).filter(Boolean)
+    : [];
+  const assocData = a.association?.data || a.association;
+  const assoc = assocData && assocData.id ? assocData : null;
+
+  return {
+    id: item.id,
+    name: a.name || '',
+    species: a.species || '',
+    breed: a.breed || '',
+    age: a.age_category || '',
+    size: a.size || '',
+    county: a.county || '',
+    gender: a.gender || '',
+    description: a.description || '',
+    image: images[0] || '/placeholder-animal.jpg',
+    images: images.length > 0 ? images : ['/placeholder-animal.jpg'],
+    sterilized: a.sterilized || false,
+    vaccinated: a.vaccinated || false,
+    association: assoc ? {
+      id: assoc.id,
+      name: assoc.name || '',
+      county: assoc.county || '',
+    } : null,
+  };
+}
+
+function mapStrapiFaq(item) {
+  const f = item.attributes || item;
+  return {
+    id: item.id,
+    question: f.question,
+    answer: f.answer,
+  };
+}
 
 export default function Home() {
   const { t } = useLang();
-  const animals = DEMO_ANIMALS;
-  const animalCount = DEMO_ANIMALS.length;
-  const assocCount = DEMO_ASSOCIATIONS.length;
+  const [animals, setAnimals] = useState([]);
+  const [animalCount, setAnimalCount] = useState(0);
+  const [assocCount, setAssocCount] = useState(0);
+  const [faqItems, setFaqItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      const [animalsRes, assocsRes, faqsRes] = await Promise.all([
+        getAnimals(),
+        getAssociations(),
+        getFAQs(),
+      ]);
+
+      if (animalsRes?.data) {
+        const mapped = animalsRes.data.map(mapStrapiAnimal);
+        setAnimals(mapped);
+        setAnimalCount(animalsRes.meta?.pagination?.total || mapped.length);
+      }
+      if (assocsRes?.data) {
+        setAssocCount(assocsRes.meta?.pagination?.total || assocsRes.data.length);
+      }
+      if (faqsRes?.data) {
+        setFaqItems(faqsRes.data.map(mapStrapiFaq));
+      }
+      setLoading(false);
+    }
+    loadData();
+  }, []);
+
   const featuredAnimals = animals.slice(0, 6);
 
   return (
@@ -79,11 +147,20 @@ export default function Home() {
               {t('see-all')}
             </Link>
           </div>
-          <div className="animals-grid">
-            {featuredAnimals.map((animal) => (
-              <AnimalCard key={animal.id} animal={animal} />
-            ))}
-          </div>
+          {loading ? (
+            <p style={{ textAlign: 'center', color: 'var(--text2)', padding: 40 }}>Se încarcă...</p>
+          ) : featuredAnimals.length > 0 ? (
+            <div className="animals-grid">
+              {featuredAnimals.map((animal) => (
+                <AnimalCard key={animal.id} animal={animal} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🐾</div>
+              <p style={{ color: 'var(--text2)', fontSize: 16 }}>Încă nu sunt animale pe platformă. Fii prima asociație care adaugă!</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -157,7 +234,11 @@ export default function Home() {
             </div>
           </ScrollReveal>
           <ScrollReveal>
-            <FAQ items={DEMO_FAQ} />
+            {faqItems.length > 0 ? (
+              <FAQ items={faqItems} />
+            ) : (
+              <p style={{ textAlign: 'center', color: 'var(--text2)' }}>FAQ-urile vor apărea în curând.</p>
+            )}
           </ScrollReveal>
         </div>
       </section>

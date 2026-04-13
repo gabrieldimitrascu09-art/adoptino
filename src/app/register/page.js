@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { registerUser, saveAuth } from '@/lib/auth';
 import { COUNTIES } from '@/data/demo';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.adoptino.ro';
+
 export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +21,11 @@ export default function RegisterPage() {
     const password = form.password.value;
     const confirmPassword = form.confirmPassword.value;
     const assocName = form.assocName.value;
+    const phone = form.phone.value;
+    const contactPerson = form.contact.value;
+    const county = form.county.value;
+    const website = form.website.value;
+    const description = form.description.value;
 
     if (password !== confirmPassword) {
       setError('Parolele nu coincid.');
@@ -30,19 +37,53 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
+
+    // Pas 1: Creăm user-ul în Strapi
     const result = await registerUser({
       username: assocName,
       email,
       password,
     });
-    setLoading(false);
 
     if (result.error) {
+      setLoading(false);
       setError(result.error);
       return;
     }
 
+    // Pas 2: Creăm Association legată de user, folosind JWT-ul primit
+    try {
+      const assocRes = await fetch(`${API_URL}/api/associations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${result.jwt}`,
+        },
+        body: JSON.stringify({
+          data: {
+            name: assocName,
+            county: county,
+            phone: phone,
+            email: email,
+            website: website || null,
+            description: description,
+            verified: false,
+          }
+        }),
+      });
+
+      if (!assocRes.ok) {
+        const errData = await assocRes.json().catch(() => null);
+        console.error('Association creation error:', errData);
+        // User-ul e creat dar Association nu — continuăm oricum
+        // Asociația poate fi creată manual din dashboard mai târziu
+      }
+    } catch (err) {
+      console.error('Association creation failed:', err);
+    }
+
     saveAuth(result.jwt, result.user);
+    setLoading(false);
     router.push('/dashboard');
   };
 
