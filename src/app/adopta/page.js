@@ -1,8 +1,10 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import AnimalCard from '@/components/AnimalCard';
 import { getAnimals, getStrapiMedia } from '@/lib/api';
 import { COUNTIES } from '@/data/demo';
+
 
 function mapStrapiAnimal(item) {
   const a = item.attributes || item;
@@ -35,13 +37,14 @@ function mapStrapiAnimal(item) {
 }
 
 export default function AdoptaPage() {
+ const urlParams = useSearchParams();
   const [allAnimals, setAllAnimals] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [county, setCounty] = useState('');
-  const [species, setSpecies] = useState('');
-  const [age, setAge] = useState('');
-  const [size, setSize] = useState('');
+  const [search, setSearch] = useState(urlParams.get('q') || '');
+  const [county, setCounty] = useState(urlParams.get('county') || '');
+  const [species, setSpecies] = useState(urlParams.get('species') || '');
+  const [age, setAge] = useState(urlParams.get('age') || '');
+  const [size, setSize] = useState(urlParams.get('size') || '');
 
   useEffect(() => {
     async function load() {
