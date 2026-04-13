@@ -1,20 +1,103 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AnimalCard from '@/components/AnimalCard';
-import { DEMO_ANIMALS, DEMO_ASSOCIATIONS } from '@/data/demo';
+import { getAnimals, getStrapiMedia } from '@/lib/api';
+
+function mapStrapiAnimal(item) {
+  const a = item.attributes || item;
+  const images = Array.isArray(a.images)
+    ? a.images.map((img) => img.url).filter(Boolean)
+    : [];
+  const assocData = a.association?.data || a.association;
+  const assoc = assocData && assocData.id ? assocData : null;
+
+  return {
+    id: item.id,
+    documentId: item.documentId || null,
+    name: a.name || '',
+    species: a.species || '',
+    breed: a.breed || '',
+    age: a.age_category || '',
+    size: a.size || '',
+    county: a.county || '',
+    gender: a.gender || '',
+    description: a.description || '',
+    image: images[0] || '/placeholder-animal.jpg',
+    images: images.length > 0 ? images : ['/placeholder-animal.jpg'],
+    sterilized: a.sterilized || false,
+    vaccinated: a.vaccinated || false,
+    goodWithKids: a.good_with_kids || false,
+    goodWithPets: a.good_with_pets || false,
+    houseTrained: a.house_trained || false,
+    adoption_status: a.adoption_status || 'disponibil',
+    association: assoc ? {
+      id: assoc.id,
+      name: assoc.name || '',
+      county: assoc.county || '',
+      phone: assoc.phone || '',
+      email: assoc.email || '',
+      website: assoc.website || '',
+      verified: assoc.verified || false,
+      image: assoc.logo?.url || null,
+    } : null,
+  };
+}
 
 export default function AnimalPage() {
   const { id } = useParams();
-  const animal = DEMO_ANIMALS.find((a) => a.id === Number(id));
-  const assoc = animal ? DEMO_ASSOCIATIONS.find((a) => a.id === animal.assocId) : null;
+  const [animal, setAnimal] = useState(null);
+  const [similar, setSimilar] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [imgIndex, setImgIndex] = useState(0);
   const [showAdoptForm, setShowAdoptForm] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [lightbox, setLightbox] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+
+  useEffect(() => {
+    async function load() {
+      // Fetch all animals (we need them for similar too)
+      const res = await getAnimals({
+        populate: {
+          images: true,
+          association: {
+            populate: { logo: true }
+          }
+        },
+        pagination: { pageSize: 100 }
+      });
+
+      if (res?.data) {
+        const allMapped = res.data.map(mapStrapiAnimal);
+        // Find by documentId first (Strapi v5 uses documentId in URLs), fallback to id
+        const found = allMapped.find((a) => a.documentId === id) || allMapped.find((a) => String(a.id) === String(id));
+
+        if (found) {
+          setAnimal(found);
+          // Similar: same county or same species, excluding current
+          const sim = allMapped
+            .filter((a) => a.id !== found.id && (a.county === found.county || a.species === found.species))
+            .slice(0, 3);
+          setSimilar(sim);
+        }
+      }
+      setLoading(false);
+    }
+    load();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <section className="section" style={{ paddingTop: 120, textAlign: 'center' }}>
+        <div className="container">
+          <p style={{ color: 'var(--text2)', fontSize: 16 }}>Se încarcă...</p>
+        </div>
+      </section>
+    );
+  }
 
   if (!animal) {
     return (
@@ -30,19 +113,20 @@ export default function AnimalPage() {
   }
 
   const images = animal.images || [];
+  const assoc = animal.association;
 
   const traits = [
     { label: 'Sterilizat', value: animal.sterilized, icon: '✂️' },
     { label: 'Vaccinat', value: animal.vaccinated, icon: '💉' },
     { label: 'Bun cu copiii', value: animal.goodWithKids, icon: '👶' },
     { label: 'Bun cu alte animale', value: animal.goodWithPets, icon: '🐾' },
-    { label: 'Potrivit pentru bloc', value: animal.goodForApartment, icon: '🏢' },
+    { label: 'Obișnuit în casă', value: animal.houseTrained, icon: '🏠' },
   ];
 
-  // Similar animals: same county or same species, excluding current
-  const similar = DEMO_ANIMALS
-    .filter((a) => a.id !== animal.id && (a.county === animal.county || a.species === animal.species))
-    .slice(0, 3);
+  const speciesLabel = { caine: 'Câine', pisica: 'Pisică', alt: 'Altele' };
+  const genderLabel = { mascul: 'Mascul', femela: 'Femelă' };
+  const ageLabel = { pui: 'Pui', tanar: 'Tânăr', adult: 'Adult', senior: 'Senior' };
+  const sizeLabel = { mic: 'Mic', mediu: 'Mediu', mare: 'Mare' };
 
   const validateAndSubmit = () => {
     const name = document.getElementById('adopt-name').value.trim();
@@ -54,11 +138,9 @@ export default function AnimalPage() {
     if (!name) errors.name = true;
     if (!city) errors.city = true;
 
-    // Phone: exactly 10 digits
     const phoneDigits = phone.replace(/\D/g, '');
     if (phoneDigits.length !== 10) errors.phone = true;
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     const knownDomains = ['gmail.com','yahoo.com','yahoo.ro','outlook.com','hotmail.com','icloud.com','protonmail.com','mail.com','aol.com','live.com','proton.me','pm.me'];
     const domain = email.split('@')[1]?.toLowerCase();
@@ -116,13 +198,15 @@ export default function AnimalPage() {
             {/* Info */}
             <div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <span className="badge badge-species">{animal.species}</span>
-                <span className="badge badge-gender">{animal.gender === 'Mascul' ? '♂' : '♀'} {animal.gender}</span>
+                <span className="badge badge-species">{speciesLabel[animal.species] || animal.species}</span>
+                <span className="badge badge-gender">{animal.gender === 'mascul' ? '♂' : '♀'} {genderLabel[animal.gender] || animal.gender}</span>
               </div>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800, marginBottom: 4 }}>{animal.name}</h1>
-              <p style={{ fontSize: 15, color: 'var(--text3)', marginBottom: 16 }}>{animal.breed} · {animal.age} · {animal.size}</p>
+              <p style={{ fontSize: 15, color: 'var(--text3)', marginBottom: 16 }}>
+                {animal.breed || ''}{animal.breed ? ' · ' : ''}{ageLabel[animal.age] || animal.age}{animal.size ? ` · ${sizeLabel[animal.size] || animal.size}` : ''}
+              </p>
               <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20 }}>📍 {animal.county}{assoc ? ` · ${assoc.name}` : ''}</p>
-              <p style={{ fontSize: 16, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 24 }}>{animal.desc}</p>
+              <p style={{ fontSize: 16, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 24 }}>{animal.description}</p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 8, marginBottom: 24 }}>
                 {traits.map((t, i) => (
@@ -142,12 +226,11 @@ export default function AnimalPage() {
 
               {assoc && (
                 <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-                  <a href={`tel:${assoc.phone}`} style={contactBtnStyle('var(--green-light)', 'var(--green)', '#a7f3d0')}>📞 {assoc.phone}</a>
-                  <a href={`mailto:${assoc.email}`} style={contactBtnStyle('var(--blue-light)', 'var(--blue)', '#93c5fd')}>✉️ Email</a>
+                  {assoc.phone && <a href={`tel:${assoc.phone}`} style={contactBtnStyle('var(--green-light)', 'var(--green)', '#a7f3d0')}>📞 {assoc.phone}</a>}
+                  {assoc.email && <a href={`mailto:${assoc.email}`} style={contactBtnStyle('var(--blue-light)', 'var(--blue)', '#93c5fd')}>✉️ Email</a>}
                 </div>
               )}
 
-              {/* Association Card - Clickable (punct 3) */}
               {assoc && (
                 <Link href={`/asociatii/${assoc.id}`} style={{ textDecoration: 'none', display: 'block' }}>
                   <div style={{
@@ -155,14 +238,18 @@ export default function AnimalPage() {
                     border: '1px solid var(--border)', cursor: 'pointer', transition: 'all 0.3s'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden' }}>
-                        <img src={assoc.image} alt={assoc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <div style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden', background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {assoc.image ? (
+                          <img src={assoc.image} alt={assoc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ fontSize: 20 }}>🏠</span>
+                        )}
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
                           {assoc.name} {assoc.verified && <span style={{ color: 'var(--green)' }}>✓</span>}
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>📍 {assoc.county} · Din {assoc.year}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text3)' }}>📍 {assoc.county}</div>
                       </div>
                       <span style={{ color: 'var(--accent)', fontSize: 18 }}>→</span>
                     </div>
@@ -172,7 +259,6 @@ export default function AnimalPage() {
             </div>
           </div>
 
-          {/* Similar Animals (punct 8) */}
           {similar.length > 0 && (
             <div style={{ marginTop: 80 }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, marginBottom: 24 }}>
@@ -188,7 +274,7 @@ export default function AnimalPage() {
         </div>
       </section>
 
-      {/* Adoption Form Modal (puncte 4, 5) */}
+      {/* Adoption Form Modal */}
       {showAdoptForm && (
         <div onClick={() => setShowAdoptForm(false)} style={overlayStyle}>
           <div onClick={(e) => e.stopPropagation()} style={modalStyle}>
@@ -232,7 +318,7 @@ export default function AnimalPage() {
         </div>
       )}
 
-      {/* Success Popup (punct 6) */}
+      {/* Success Popup */}
       {showSuccess && (
         <div onClick={() => setShowSuccess(false)} style={overlayStyle}>
           <div onClick={(e) => e.stopPropagation()} style={{
@@ -251,7 +337,7 @@ export default function AnimalPage() {
               Cererea ta de adopție pentru <strong>{animal.name}</strong> a fost trimisă cu succes.
             </p>
             <p style={{ fontSize: 15, color: 'var(--text3)', lineHeight: 1.6, marginBottom: 24 }}>
-              Asociația <strong>{assoc?.name}</strong> te va contacta în curând. Mulțumim că alegi să adopți! 🐾
+              {assoc ? <>Asociația <strong>{assoc.name}</strong> te va contacta în curând. </> : ''}Mulțumim că alegi să adopți! 🐾
             </p>
             <button onClick={() => setShowSuccess(false)}
               className="btn btn-primary" style={{ fontSize: 16, padding: '14px 32px' }}>
