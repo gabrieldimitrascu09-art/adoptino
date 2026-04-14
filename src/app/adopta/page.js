@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AnimalCard from '@/components/AnimalCard';
 import { getAnimals, getStrapiMedia } from '@/lib/api';
@@ -36,7 +36,7 @@ function mapStrapiAnimal(item) {
   };
 }
 
-export default function AdoptaPage() {
+function AdoptaPageContent() {
  const urlParams = useSearchParams();
   const [allAnimals, setAllAnimals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -152,5 +152,12 @@ export default function AdoptaPage() {
         )}
       </div>
     </section>
+  );
+}
+export default function AdoptaPage() {
+  return (
+    <Suspense fallback={<div style={{ paddingTop: 120, textAlign: 'center' }}><p>Se încarcă...</p></div>}>
+      <AdoptaPageContent />
+    </Suspense>
   );
 }
