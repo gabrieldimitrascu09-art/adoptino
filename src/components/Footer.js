@@ -1,6 +1,10 @@
+'use client';
 import Link from 'next/link';
+import { useLang } from '@/lib/LanguageContext';
 
 export default function Footer() {
+  const { t } = useLang();
+
   return (
     <footer>
       <div className="footer-grid">
@@ -13,38 +17,38 @@ export default function Footer() {
             }}>A</div>
             <span className="logo-text">Adoptino</span>
           </div>
-          <p>Platforma gratuită de adopții animale din România. Conectăm suflete.</p>
+          <p>{t('footer-desc')}</p>
           <div className="footer-social">
             <a href="https://facebook.com/adoptino.ro" target="_blank" rel="noopener noreferrer" aria-label="Facebook">f</a>
             <a href="https://instagram.com/adoptino.ro" target="_blank" rel="noopener noreferrer" aria-label="Instagram">📷</a>
           </div>
         </div>
         <div className="footer-column">
-          <h4>Platformă</h4>
-          <Link href="/adopta">Adoptă</Link>
-          <Link href="/asociatii">Asociații</Link>
-          <Link href="/articole">Articole</Link>
-          <a href="https://www.buymeacoffee.com/adoptino.ro" target="_blank" rel="noopener noreferrer">☕ Donează</a>
+          <h4>{t('footer-platform')}</h4>
+          <Link href="/adopta">{t('nav-adopt')}</Link>
+          <Link href="/asociatii">{t('nav-assoc')}</Link>
+          <Link href="/articole">{t('nav-articles')}</Link>
+          <a href="https://www.buymeacoffee.com/adoptino.ro" target="_blank" rel="noopener noreferrer">☕ {t('nav-donate')}</a>
         </div>
         <div className="footer-column">
-          <h4>Informații</h4>
-          <Link href="/despre">Despre noi</Link>
-          <Link href="/implica-te">Implică-te</Link>
-          <Link href="/termeni">Termeni</Link>
-          <Link href="/confidentialitate">Confidențialitate</Link>
+          <h4>{t('footer-info')}</h4>
+          <Link href="/despre">{t('nav-about')}</Link>
+          <Link href="/implica-te">{t('nav-involve')}</Link>
+          <Link href="/termeni">{t('footer-terms')}</Link>
+          <Link href="/confidentialitate">{t('footer-privacy')}</Link>
           <Link href="/cookies">Cookies</Link>
         </div>
         <div className="footer-column">
-          <h4>Asociații</h4>
-          <Link href="/login">Autentificare</Link>
-          <Link href="/register">Înregistrare</Link>
+          <h4>{t('footer-assoc')}</h4>
+          <Link href="/login">{t('footer-login')}</Link>
+          <Link href="/register">{t('footer-register')}</Link>
         </div>
       </div>
       <div className="footer-bottom">
         <span>© 2026 Adoptino · Iași, România</span>
         <div className="footer-links">
-          <Link href="/termeni">Termeni</Link>
-          <Link href="/confidentialitate">Confidențialitate</Link>
+          <Link href="/termeni">{t('footer-terms')}</Link>
+          <Link href="/confidentialitate">{t('footer-privacy')}</Link>
           <Link href="/cookies">Cookies</Link>
         </div>
       </div>

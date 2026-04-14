@@ -33,6 +33,7 @@ function mapStrapiAnimal(item) {
       name: assoc.name || '',
       county: assoc.county || '',
     } : null,
+    createdAt: item.createdAt || null,
   };
 }
 

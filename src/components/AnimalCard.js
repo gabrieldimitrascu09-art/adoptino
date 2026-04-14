@@ -26,6 +26,9 @@ export default function AnimalCard({ animal }) {
       <div className="animal-card-image">
         <img src={images[imgIndex] || '/placeholder.jpg'} alt={animal.name} loading="lazy" />
         <div className="animal-card-badges">
+          {animal.createdAt && (Date.now() - new Date(animal.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000) && (
+            <span style={{ background: '#dc2626', color: 'white', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 800, letterSpacing: '0.5px' }}>NOU</span>
+          )}
           <span className="badge badge-species">{animal.species}</span>
           <span className="badge badge-gender">
             {animal.gender === 'Mascul' ? '♂' : '♀'} {animal.gender}
