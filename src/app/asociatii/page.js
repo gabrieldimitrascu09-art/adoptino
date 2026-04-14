@@ -3,10 +3,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ScrollReveal from '@/components/ScrollReveal';
 import { getAssociations, getStrapiMedia } from '@/lib/api';
+import { useLang } from '@/lib/LanguageContext';
 
 function mapStrapiAssociation(item) {
   const a = item.attributes || item;
-const logo = a.logo?.url || (a.logo?.data?.url) || null;
+  const logo = a.logo?.url || (a.logo?.data?.url) || null;
 
   return {
     id: item.id,
@@ -23,6 +24,7 @@ const logo = a.logo?.url || (a.logo?.data?.url) || null;
 }
 
 export default function AsociatiiPage() {
+  const { t } = useLang();
   const [associations, setAssociations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,14 +49,14 @@ export default function AsociatiiPage() {
       <div className="container">
         <ScrollReveal>
           <div className="section-header">
-            <span className="section-badge">Parteneri</span>
-            <h2 className="section-title">Asociații partenere</h2>
-            <p className="section-subtitle">Organizații verificate care salvează vieți în fiecare zi</p>
+            <span className="section-badge">{t('assoc-badge')}</span>
+            <h2 className="section-title">{t('assoc-title')}</h2>
+            <p className="section-subtitle">{t('assoc-subtitle')}</p>
           </div>
         </ScrollReveal>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text2)', padding: 40 }}>Se încarcă...</p>
+          <p style={{ textAlign: 'center', color: 'var(--text2)', padding: 40 }}>{t('adopta-loading')}</p>
         ) : associations.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: 24 }}>
             {associations.map((assoc) => (
@@ -81,15 +83,15 @@ export default function AsociatiiPage() {
                       </div>
                     </div>
                     <div style={{ padding: '12px 20px', fontSize: 14, color: 'var(--text2)', lineHeight: 1.6 }}>
-                      {assoc.desc ? (assoc.desc.length > 120 ? assoc.desc.slice(0, 120) + '...' : assoc.desc) : 'Fără descriere încă.'}
+                      {assoc.desc ? (assoc.desc.length > 120 ? assoc.desc.slice(0, 120) + '...' : assoc.desc) : t('assoc-no-desc')}
                     </div>
                     <div style={{
                       padding: '12px 20px 20px', display: 'flex', gap: 16,
                       fontSize: 13, color: 'var(--text3)', borderTop: '1px solid var(--border)', marginTop: 4
                     }}>
-                      {assoc.year && <span>📅 Din {assoc.year}</span>}
-                      <span>🐾 {assoc.animalsCount} animale</span>
-                      <span>💛 {assoc.adoptedCount} adoptate</span>
+                      {assoc.year && <span>📅 {t('assoc-from')} {assoc.year}</span>}
+                      <span>🐾 {assoc.animalsCount} {t('assoc-animals')}</span>
+                      <span>💛 {assoc.adoptedCount} {t('assoc-adopted')}</span>
                     </div>
                   </div>
                 </Link>
@@ -99,8 +101,8 @@ export default function AsociatiiPage() {
         ) : (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🏠</div>
-            <p style={{ color: 'var(--text2)', fontSize: 16 }}>Încă nu sunt asociații înregistrate.</p>
-            <Link href="/register" className="btn btn-primary" style={{ marginTop: 16 }}>Înregistrează-ți asociația</Link>
+            <p style={{ color: 'var(--text2)', fontSize: 16 }}>{t('assoc-none')}</p>
+            <Link href="/register" className="btn btn-primary" style={{ marginTop: 16 }}>{t('assoc-register')}</Link>
           </div>
         )}
       </div>

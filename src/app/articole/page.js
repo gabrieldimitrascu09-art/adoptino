@@ -1,16 +1,20 @@
+'use client';
 import Link from 'next/link';
 import ScrollReveal from '@/components/ScrollReveal';
 import { DEMO_ARTICLES } from '@/data/demo';
+import { useLang } from '@/lib/LanguageContext';
 
 export default function ArticolePage() {
+  const { t } = useLang();
+
   return (
     <section className="section" style={{ paddingTop: 120 }}>
       <div className="container">
         <ScrollReveal>
           <div className="section-header">
-            <span className="section-badge">Resurse</span>
-            <h2 className="section-title">Articole și ghiduri</h2>
-            <p className="section-subtitle">Tot ce trebuie să știi despre adopție și îngrijirea animalelor</p>
+            <span className="section-badge">{t('articles-badge')}</span>
+            <h2 className="section-title">{t('articles-title')}</h2>
+            <p className="section-subtitle">{t('articles-subtitle')}</p>
           </div>
         </ScrollReveal>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>

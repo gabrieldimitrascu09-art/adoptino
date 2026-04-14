@@ -4,14 +4,14 @@ import { useSearchParams } from 'next/navigation';
 import AnimalCard from '@/components/AnimalCard';
 import { getAnimals, getStrapiMedia } from '@/lib/api';
 import { COUNTIES } from '@/data/demo';
-
+import { useLang } from '@/lib/LanguageContext';
 
 function mapStrapiAnimal(item) {
   const a = item.attributes || item;
   const images = Array.isArray(a.images)
     ? a.images.map((img) => img.url).filter(Boolean)
     : [];
- const assocData = a.association?.data || a.association;
+  const assocData = a.association?.data || a.association;
   const assoc = assocData && assocData.id ? assocData : null;
 
   return {
@@ -28,17 +28,18 @@ function mapStrapiAnimal(item) {
     images: images.length > 0 ? images : ['/placeholder-animal.jpg'],
     sterilized: a.sterilized || false,
     vaccinated: a.vaccinated || false,
+    createdAt: item.createdAt || null,
     association: assoc ? {
       id: assoc.id,
       name: assoc.name || '',
       county: assoc.county || '',
     } : null,
-    createdAt: item.createdAt || null,
   };
 }
 
 function AdoptaPageContent() {
- const urlParams = useSearchParams();
+  const { t } = useLang();
+  const urlParams = useSearchParams();
   const [allAnimals, setAllAnimals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(urlParams.get('q') || '');
@@ -89,10 +90,10 @@ function AdoptaPageContent() {
     <section className="section" style={{ paddingTop: 120 }}>
       <div className="container">
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800, marginBottom: 8 }}>
-          Adoptă un prieten
+          {t('adopta-title')}
         </h1>
         <p style={{ color: 'var(--text2)', marginBottom: 24 }}>
-          {loading ? 'Se încarcă...' : `${filtered.length} ${filtered.length === 1 ? 'animal disponibil' : 'animale disponibile'}`}
+          {loading ? t('adopta-loading') : `${filtered.length} ${filtered.length === 1 ? t('adopta-available-1') : t('adopta-available')}`}
         </p>
 
         <div style={{
@@ -101,43 +102,43 @@ function AdoptaPageContent() {
           border: '1px solid var(--border)'
         }}>
           <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="🔍 Caută: câine, pisică, Rex..."
+            placeholder={t('adopta-search')}
             style={{ flex: '2 1 200px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none', background: 'var(--surface)', transition: 'border-color 0.3s' }} />
           <select value={county} onChange={(e) => setCounty(e.target.value)}
             style={{ flex: '1 1 150px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'var(--surface)', cursor: 'pointer' }}>
-            <option value="">Toate județele</option>
+            <option value="">{t('adopta-all-counties')}</option>
             {COUNTIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <select value={species} onChange={(e) => setSpecies(e.target.value)}
             style={{ flex: '1 1 130px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'var(--surface)', cursor: 'pointer' }}>
-            <option value="">Tip animal</option>
-            <option value="caine">🐕 Câine</option>
-            <option value="pisica">🐱 Pisică</option>
-            <option value="alt">🐰 Altele</option>
+            <option value="">{t('adopta-species')}</option>
+            <option value="caine">{t('adopta-dog')}</option>
+            <option value="pisica">{t('adopta-cat')}</option>
+            <option value="alt">{t('adopta-other')}</option>
           </select>
           <select value={age} onChange={(e) => setAge(e.target.value)}
             style={{ flex: '1 1 120px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'var(--surface)', cursor: 'pointer' }}>
-            <option value="">Vârstă</option>
-            <option value="0-1">Pui</option>
-            <option value="1-3">Tânăr</option>
-            <option value="3-6">Adult</option>
-            <option value="6+">Senior</option>
+            <option value="">{t('adopta-age')}</option>
+            <option value="0-1">{t('adopta-puppy')}</option>
+            <option value="1-3">{t('adopta-young')}</option>
+            <option value="3-6">{t('adopta-adult')}</option>
+            <option value="6+">{t('adopta-senior')}</option>
           </select>
           <select value={size} onChange={(e) => setSize(e.target.value)}
             style={{ flex: '1 1 120px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'var(--surface)', cursor: 'pointer' }}>
-            <option value="">Talie</option>
-            <option value="mic">Mică</option>
-            <option value="mediu">Medie</option>
-            <option value="mare">Mare</option>
+            <option value="">{t('adopta-size')}</option>
+            <option value="mic">{t('adopta-small')}</option>
+            <option value="mediu">{t('adopta-medium')}</option>
+            <option value="mare">{t('adopta-large')}</option>
           </select>
           <button onClick={clearFilters}
             style={{ padding: '12px 20px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', background: 'transparent', fontSize: 14, fontWeight: 700, color: 'var(--text2)', cursor: 'pointer', transition: 'all 0.3s', whiteSpace: 'nowrap' }}>
-            ✕ Șterge filtre
+            {t('adopta-clear')}
           </button>
         </div>
 
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--text2)', padding: 60 }}>Se încarcă animalele...</p>
+          <p style={{ textAlign: 'center', color: 'var(--text2)', padding: 60 }}>{t('adopta-loading-animals')}</p>
         ) : filtered.length > 0 ? (
           <div className="animals-grid">
             {filtered.map((animal) => (
@@ -147,14 +148,15 @@ function AdoptaPageContent() {
         ) : (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 64, marginBottom: 16 }}>🔍</div>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>Niciun rezultat</h3>
-            <p style={{ color: 'var(--text2)' }}>Încă nu sunt animale pe platformă sau filtrele sunt prea restrictive.</p>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 8 }}>{t('adopta-no-results')}</h3>
+            <p style={{ color: 'var(--text2)' }}>{t('adopta-no-results-text')}</p>
           </div>
         )}
       </div>
     </section>
   );
 }
+
 export default function AdoptaPage() {
   return (
     <Suspense fallback={<div style={{ paddingTop: 120, textAlign: 'center' }}><p>Se încarcă...</p></div>}>

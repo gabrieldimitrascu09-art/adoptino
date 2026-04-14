@@ -4,10 +4,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { registerUser, saveAuth } from '@/lib/auth';
 import { COUNTIES } from '@/data/demo';
+import { useLang } from '@/lib/LanguageContext';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.adoptino.ro';
 
 export default function RegisterPage() {
+  const { t } = useLang();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -26,6 +28,7 @@ export default function RegisterPage() {
     const county = form.county.value;
     const website = form.website.value;
     const description = form.description.value;
+    const cui = form.cui?.value || null;
 
     if (password !== confirmPassword) {
       setError('Parolele nu coincid.');
@@ -38,7 +41,6 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    // Pas 1: Creăm user-ul în Strapi
     const result = await registerUser({
       username: assocName,
       email,
@@ -51,7 +53,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // Pas 2: Creăm Association legată de user, folosind JWT-ul primit
     try {
       const assocRes = await fetch(`${API_URL}/api/associations`, {
         method: 'POST',
@@ -59,7 +60,7 @@ export default function RegisterPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${result.jwt}`,
         },
-       body: JSON.stringify({
+        body: JSON.stringify({
           data: {
             name: assocName,
             county: county,
@@ -67,7 +68,7 @@ export default function RegisterPage() {
             email: email,
             website: website || null,
             description: description,
-            cui: form.cui?.value || null,
+            cui: cui,
             contact_person: contactPerson,
             verified: false,
           }
@@ -77,8 +78,6 @@ export default function RegisterPage() {
       if (!assocRes.ok) {
         const errData = await assocRes.json().catch(() => null);
         console.error('Association creation error:', errData);
-        // User-ul e creat dar Association nu — continuăm oricum
-        // Asociația poate fi creată manual din dashboard mai târziu
       }
     } catch (err) {
       console.error('Association creation failed:', err);
@@ -103,9 +102,9 @@ export default function RegisterPage() {
             fontSize: 28, color: 'white', fontWeight: 800, fontFamily: 'var(--font-display)'
           }}>A</div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-            Înregistrare asociație
+            {t('register-title')}
           </h2>
-          <p style={{ fontSize: 15, color: 'var(--text2)' }}>Creează un cont pentru a lista animale pe platformă.</p>
+          <p style={{ fontSize: 15, color: 'var(--text2)' }}>{t('register-subtitle')}</p>
         </div>
 
         {error && (
@@ -117,65 +116,65 @@ export default function RegisterPage() {
 
         <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={labelStyle}>Numele asociației *</label>
+            <label style={labelStyle}>{t('register-name')}</label>
             <input name="assocName" type="text" placeholder="ex: Asociația Prietenii Animalelor" required style={inputStyle} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
-              <label style={labelStyle}>Email *</label>
+              <label style={labelStyle}>{t('register-email')}</label>
               <input name="email" type="email" placeholder="contact@asociatia.ro" required style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Telefon *</label>
+              <label style={labelStyle}>{t('register-phone')}</label>
               <input name="phone" type="tel" placeholder="07xx xxx xxx" required style={inputStyle} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
-              <label style={labelStyle}>Persoană contact *</label>
+              <label style={labelStyle}>{t('register-contact')}</label>
               <input name="contact" type="text" placeholder="Nume complet" required style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Județ *</label>
+              <label style={labelStyle}>{t('register-county')}</label>
               <select name="county" required style={inputStyle}>
-                <option value="">Selectează...</option>
+                <option value="">{t('register-select')}</option>
                 {COUNTIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label style={labelStyle}>CUI / CIF (opțional)</label>
+            <label style={labelStyle}>{t('register-cui')}</label>
             <input name="cui" type="text" placeholder="ex: RO12345678" style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Website (opțional)</label>
+            <label style={labelStyle}>{t('register-website')}</label>
             <input name="website" type="url" placeholder="https://asociatia.ro" style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Descriere *</label>
-            <textarea name="description" placeholder="Descrieți pe scurt activitatea asociației..." rows={3} required
+            <label style={labelStyle}>{t('register-description')}</label>
+            <textarea name="description" placeholder={t('register-description-placeholder')} rows={3} required
               style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
-              <label style={labelStyle}>Parolă *</label>
+              <label style={labelStyle}>{t('register-password')}</label>
               <input name="password" type="password" placeholder="Min. 8 caractere" required style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>Confirmă parola *</label>
+              <label style={labelStyle}>{t('register-confirm')}</label>
               <input name="confirmPassword" type="password" placeholder="••••••••" required style={inputStyle} />
             </div>
           </div>
 
           <div style={{ padding: '12px 16px', background: 'var(--surface)', borderRadius: 'var(--radius-xs)', fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
-            📋 Prin crearea contului, confirm că reprezint legal o asociație de protecție a animalelor înregistrată în România și sunt de acord cu{' '}
-            <Link href="/termeni" style={{ color: 'var(--accent)', fontWeight: 600 }}>Termenii și Condițiile</Link> și{' '}
-            <Link href="/confidentialitate" style={{ color: 'var(--accent)', fontWeight: 600 }}>Politica de Confidențialitate</Link>.
+            📋 {t('register-legal')}{' '}
+            <Link href="/termeni" style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('register-terms')}</Link> {t('register-and')}{' '}
+            <Link href="/confidentialitate" style={{ color: 'var(--accent)', fontWeight: 600 }}>{t('register-privacy')}</Link>.
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading}
             style={{ width: '100%', fontSize: 16, padding: '14px 28px', opacity: loading ? 0.7 : 1 }}>
-            {loading ? 'Se creează contul...' : 'Creează contul'}
+            {loading ? t('register-loading') : t('register-btn')}
           </button>
         </form>
 
@@ -184,12 +183,12 @@ export default function RegisterPage() {
           color: 'var(--text3)', fontSize: 13, fontWeight: 600
         }}>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }}></div>
-          <span>sau</span>
+          <span>{t('register-or')}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }}></div>
         </div>
 
         <Link href="/login" className="btn btn-secondary" style={{ width: '100%', fontSize: 15, padding: '14px 28px' }}>
-          Am deja un cont
+          {t('register-has-account')}
         </Link>
       </div>
     </div>

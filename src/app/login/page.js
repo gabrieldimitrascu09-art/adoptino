@@ -3,8 +3,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { loginUser, saveAuth } from '@/lib/auth';
+import { useLang } from '@/lib/LanguageContext';
 
 export default function LoginPage() {
+  const { t } = useLang();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,15 +17,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     const result = await loginUser(email, password);
     setLoading(false);
-
     if (result.error) {
       setError(result.error);
       return;
     }
-
     saveAuth(result.jwt, result.user);
     router.push('/dashboard');
   };
@@ -42,9 +41,9 @@ export default function LoginPage() {
             fontSize: 28, color: 'white', fontWeight: 800, fontFamily: 'var(--font-display)'
           }}>A</div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-            Portal asociații
+            {t('login-title')}
           </h2>
-          <p style={{ fontSize: 15, color: 'var(--text2)' }}>Intră în cont pentru a gestiona anunțurile.</p>
+          <p style={{ fontSize: 15, color: 'var(--text2)' }}>{t('login-subtitle')}</p>
         </div>
 
         {error && (
@@ -56,18 +55,18 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={labelStyle}>Email</label>
+            <label style={labelStyle}>{t('login-email')}</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="contact@asociatia.ro" required style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Parolă</label>
+            <label style={labelStyle}>{t('login-password')}</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••" required style={inputStyle} />
           </div>
           <button type="submit" className="btn btn-primary" disabled={loading}
             style={{ width: '100%', fontSize: 16, padding: '14px 28px', opacity: loading ? 0.7 : 1 }}>
-            {loading ? 'Se autentifică...' : 'Autentificare'}
+            {loading ? t('login-loading') : t('login-btn')}
           </button>
         </form>
 
@@ -76,12 +75,12 @@ export default function LoginPage() {
           color: 'var(--text3)', fontSize: 13, fontWeight: 600
         }}>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }}></div>
-          <span>sau</span>
+          <span>{t('login-or')}</span>
           <div style={{ flex: 1, height: 1, background: 'var(--border)' }}></div>
         </div>
 
         <Link href="/register" className="btn btn-secondary" style={{ width: '100%', fontSize: 15, padding: '14px 28px' }}>
-          Creează cont nou
+          {t('login-register')}
         </Link>
       </div>
     </div>
