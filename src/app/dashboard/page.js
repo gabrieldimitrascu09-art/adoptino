@@ -34,7 +34,7 @@ export default function DashboardPage() {
 
   const fetchData = async (jwt, currentUser) => {
     try {
-      const assocRes = await fetch(`${API_URL}/api/associations?filters[email][$eq]=${encodeURIComponent(currentUser.email)}&populate[logo]=true&populate[animals][populate][images]=true&pagination[pageSize]=100`, {
+      const assocRes = await fetch(`${API_URL}/api/associations?filters[email][$eq]=${encodeURIComponent(currentUser.email)}&populate[logo]=true&populate[gallery]=true&populate[animals][populate][images]=true&pagination[pageSize]=100`, {
         headers: { Authorization: `Bearer ${jwt}` }
       });
       const assocData = await assocRes.json();
@@ -303,28 +303,55 @@ export default function DashboardPage() {
                 <div><label style={lbl}>Despre asociație</label><textarea value={profile.description} onChange={e => setProfile({ ...profile, description: e.target.value })} placeholder="Povestește despre misiunea asociației..." rows={5} style={{ ...inp, resize: 'vertical' }} /></div>
                 <div>
                   <label style={lbl}>Galerie foto (max 5 poze)</label>
-                  <div onClick={() => document.getElementById('gallery-input')?.click()} style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius-xs)', padding: 20, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)' }}>
-                    <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
-                    <p style={{ fontSize: 14, color: 'var(--text2)', fontWeight: 600 }}>Click pentru a adăuga poze în galerie</p>
-                  </div>
-                  <input id="gallery-input" type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
-                    const files = Array.from(e.target.files);
-                    if (files.length > 5) { setMessage('❌ Maximum 5 fotografii.'); return; }
-                    const auth = getAuth(); if (!auth || !association) return;
-                    setMessage('Se încarcă pozele...');
-                    const ids = await uploadImages(files, auth.jwt);
-                    if (ids.length > 0) {
-                      try {
-                        await fetch(`${API_URL}/api/associations/${association.documentId}`, {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` },
-                          body: JSON.stringify({ data: { gallery: ids } })
-                        });
-                        setMessage('✅ Galerie actualizată!');
-                        refreshAnimals();
-                      } catch { setMessage('❌ Eroare la salvare galerie.'); }
-                    }
-                  }} />
+                  {association?.gallery && Array.isArray(association.gallery) && association.gallery.length > 0 && (
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                      {association.gallery.map((img, i) => (
+                        <div key={img.id || i} style={{ position: 'relative', width: 100, height: 80, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--border)' }}>
+                          <img src={img.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <button onClick={async () => {
+                            const auth = getAuth(); if (!auth || !association) return;
+                            const remaining = association.gallery.filter((_, idx) => idx !== i).map(g => g.id);
+                            try {
+                              await fetch(`${API_URL}/api/associations/${association.documentId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` },
+                                body: JSON.stringify({ data: { gallery: remaining.length > 0 ? remaining : null } })
+                              });
+                              setMessage('✅ Poză ștearsă din galerie!');
+                              refreshAnimals();
+                            } catch { setMessage('❌ Eroare la ștergere.'); }
+                          }} style={{ position: 'absolute', top: 2, right: 2, width: 20, height: 20, borderRadius: '50%', background: '#dc2626', border: '2px solid white', color: 'white', fontSize: 10, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(!association?.gallery || association.gallery.length < 5) && (
+                    <>
+                      <div onClick={() => document.getElementById('gallery-input')?.click()} style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius-xs)', padding: 20, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)' }}>
+                        <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
+                        <p style={{ fontSize: 14, color: 'var(--text2)', fontWeight: 600 }}>Click pentru a adăuga poze ({association?.gallery?.length || 0}/5)</p>
+                      </div>
+                      <input id="gallery-input" type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                        const files = Array.from(e.target.files);
+                        const currentCount = association?.gallery?.length || 0;
+                        if (currentCount + files.length > 5) { setMessage(`❌ Poți adăuga maxim ${5 - currentCount} poze.`); return; }
+                        const auth = getAuth(); if (!auth || !association) return;
+                        setMessage('Se încarcă pozele...');
+                        const newIds = await uploadImages(files, auth.jwt);
+                        const existingIds = (association.gallery || []).map(g => g.id);
+                        const allIds = [...existingIds, ...newIds];
+                        try {
+                          await fetch(`${API_URL}/api/associations/${association.documentId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` },
+                            body: JSON.stringify({ data: { gallery: allIds } })
+                          });
+                          setMessage('✅ Galerie actualizată!');
+                          refreshAnimals();
+                        } catch { setMessage('❌ Eroare la salvare galerie.'); }
+                      }} />
+                    </>
+                  )}
                 </div>
                 <button onClick={handleSaveProfile} className="btn btn-primary" disabled={savingProfile} style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}>{savingProfile ? 'Se salvează...' : 'Salvează profilul'}</button>
               </div>
