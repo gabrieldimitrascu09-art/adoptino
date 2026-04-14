@@ -46,6 +46,7 @@ export default function RootLayout({ children }) {
         <Footer />
         <BMCButton />
         <CookieBanner />
+        <FeatureRequest />
         </LanguageProvider>
       </body>
     </html>
