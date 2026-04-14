@@ -4,6 +4,7 @@ import Footer from '@/components/Footer';
 import BMCButton from '@/components/BMCButton';
 import CookieBanner from '@/components/CookieBanner';
 import { LanguageProvider } from '@/lib/LanguageContext';
+import FeatureRequest from '@/components/FeatureRequest';
 export const metadata = {
   title: 'Adoptino — Platforma de adopții animale din România',
   description: 'Conectăm asociațiile de protecție cu oamenii care vor să adopte. Gratuit, mereu.',

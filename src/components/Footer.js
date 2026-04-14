@@ -43,6 +43,10 @@ export default function Footer() {
           <Link href="/login">{t('footer-login')}</Link>
           <Link href="/register">{t('footer-register')}</Link>
         </div>
+        <div className="footer-column">
+          <h4>Feedback</h4>
+          <a href="#" onClick={(e) => { e.preventDefault(); window.__showFeatureRequest?.(); }} style={{ cursor: 'pointer' }}>💡 Cerere funcții</a>
+        </div>
       </div>
       <div className="footer-bottom">
         <span>© 2026 Adoptino · Iași, România</span>

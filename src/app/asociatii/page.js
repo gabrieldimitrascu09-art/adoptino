@@ -10,6 +10,7 @@ const logo = a.logo?.url || (a.logo?.data?.url) || null;
 
   return {
     id: item.id,
+    documentId: item.documentId || null,
     name: a.name || '',
     county: a.county || '',
     desc: a.description || '',
@@ -58,7 +59,7 @@ export default function AsociatiiPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))', gap: 24 }}>
             {associations.map((assoc) => (
               <ScrollReveal key={assoc.id}>
-                <Link href={`/asociatii/${assoc.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                <Link href={`/asociatii/${assoc.documentId || assoc.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                   <div style={{
                     background: 'var(--card)', borderRadius: 'var(--radius)', overflow: 'hidden',
                     border: '1px solid var(--border)', transition: 'all 0.3s', cursor: 'pointer', height: '100%'

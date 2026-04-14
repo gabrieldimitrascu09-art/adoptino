@@ -301,6 +301,31 @@ export default function DashboardPage() {
                   <div><label style={lbl}>Persoană contact</label><input value={profile.contact_person} onChange={e => setProfile({ ...profile, contact_person: e.target.value })} placeholder="Nume complet" style={inp} /></div>
                 </div>
                 <div><label style={lbl}>Despre asociație</label><textarea value={profile.description} onChange={e => setProfile({ ...profile, description: e.target.value })} placeholder="Povestește despre misiunea asociației..." rows={5} style={{ ...inp, resize: 'vertical' }} /></div>
+                <div>
+                  <label style={lbl}>Galerie foto (max 5 poze)</label>
+                  <div onClick={() => document.getElementById('gallery-input')?.click()} style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius-xs)', padding: 20, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)' }}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
+                    <p style={{ fontSize: 14, color: 'var(--text2)', fontWeight: 600 }}>Click pentru a adăuga poze în galerie</p>
+                  </div>
+                  <input id="gallery-input" type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 5) { setMessage('❌ Maximum 5 fotografii.'); return; }
+                    const auth = getAuth(); if (!auth || !association) return;
+                    setMessage('Se încarcă pozele...');
+                    const ids = await uploadImages(files, auth.jwt);
+                    if (ids.length > 0) {
+                      try {
+                        await fetch(`${API_URL}/api/associations/${association.documentId}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` },
+                          body: JSON.stringify({ data: { gallery: ids } })
+                        });
+                        setMessage('✅ Galerie actualizată!');
+                        refreshAnimals();
+                      } catch { setMessage('❌ Eroare la salvare galerie.'); }
+                    }
+                  }} />
+                </div>
                 <button onClick={handleSaveProfile} className="btn btn-primary" disabled={savingProfile} style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}>{savingProfile ? 'Se salvează...' : 'Salvează profilul'}</button>
               </div>
             </div>

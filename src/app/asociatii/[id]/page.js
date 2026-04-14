@@ -47,6 +47,7 @@ export default function AssociationPage() {
       const resByDoc = await fetchAPI(`/associations/${id}`, {
         populate: {
           logo: true,
+          gallery: true,
           animals: {
             populate: { images: true },
             filters: { adoption_status: { $eq: 'disponibil' } }
@@ -90,6 +91,9 @@ export default function AssociationPage() {
           founded_year: a.founded_year || null,
           total_adoptions: a.total_adoptions || 0,
           image: logo,
+          cui: a.cui || '',
+          contact_person: a.contact_person || '',
+          gallery: Array.isArray(a.gallery) ? a.gallery.map(img => img.url).filter(Boolean) : [],
         });
 
         // Map animals from the relation
@@ -172,7 +176,12 @@ export default function AssociationPage() {
           {assoc.description && (
             <p style={{ fontSize: 17, color: 'var(--text2)', lineHeight: 1.8, marginBottom: 32 }}>{assoc.description}</p>
           )}
-
+{(assoc.cui || assoc.contact_person) && (
+            <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', fontSize: 15, color: 'var(--text2)' }}>
+              {assoc.cui && <span>🏢 CUI: <strong>{assoc.cui}</strong></span>}
+              {assoc.contact_person && <span>👤 Contact: <strong>{assoc.contact_person}</strong></span>}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 12, marginBottom: 40, flexWrap: 'wrap' }}>
             {assoc.phone && (
               <a href={`tel:${assoc.phone}`} style={{
@@ -196,7 +205,18 @@ export default function AssociationPage() {
               }}>🌐 {assoc.website}</a>
             )}
           </div>
-
+{assoc.gallery.length > 0 && (
+            <div style={{ marginBottom: 40 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Galerie foto</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                {assoc.gallery.map((url, i) => (
+                  <div key={i} style={{ borderRadius: 'var(--radius-sm)', overflow: 'hidden', height: 180 }}>
+                    <img src={url} alt={`${assoc.name} foto ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {animals.length > 0 ? (
             <>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, marginBottom: 24 }}>
