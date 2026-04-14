@@ -19,6 +19,7 @@ export async function fetchAPI(endpoint, params = {}) {
 
 export async function getAnimals(params = {}) {
   const defaultParams = {
+    sort: 'createdAt:desc',
     populate: {
       images: true,
       association: {

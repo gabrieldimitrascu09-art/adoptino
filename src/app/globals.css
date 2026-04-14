@@ -266,3 +266,6 @@ footer {
   .animal-card:hover, .benefit-card:hover, .step-content:hover { transform: none; }
   .animal-card:active { transform: scale(0.98); }
 }
+img {
+  image-orientation: from-image;
+}

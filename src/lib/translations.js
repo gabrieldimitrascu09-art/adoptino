@@ -164,4 +164,7 @@ export const T = {
   'feature-btn': { ro: 'Trimite sugestia', en: 'Send suggestion' },
   'feature-thanks': { ro: 'Mulțumim!', en: 'Thank you!' },
   'feature-sent': { ro: 'Sugestia ta a fost trimisă.', en: 'Your suggestion has been sent.' },
+  'adopta-gender': { ro: 'Sex', en: 'Gender' },
+  'adopta-male': { ro: '♂ Mascul', en: '♂ Male' },
+  'adopta-female': { ro: '♀ Femelă', en: '♀ Female' },
 };

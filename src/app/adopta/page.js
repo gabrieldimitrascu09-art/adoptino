@@ -47,6 +47,7 @@ function AdoptaPageContent() {
   const [species, setSpecies] = useState(urlParams.get('species') || '');
   const [age, setAge] = useState(urlParams.get('age') || '');
   const [size, setSize] = useState(urlParams.get('size') || '');
+  const [gender, setGender] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -74,16 +75,17 @@ function AdoptaPageContent() {
         const sizeMap = { 'Mică': 'mic', 'Medie': 'mediu', 'Mare': 'mare' };
         if (a.size !== size && a.size !== sizeMap[size]) return false;
       }
+      if (gender && a.gender !== gender) return false;
       if (age) {
         const ageMap = { '0-1': 'pui', '1-3': 'tanar', '3-6': 'adult', '6+': 'senior' };
         if (a.age !== ageMap[age]) return false;
       }
       return true;
     });
-  }, [allAnimals, search, county, species, age, size]);
+  }, [allAnimals, search, county, species, age, size, gender]);
 
   const clearFilters = () => {
-    setSearch(''); setCounty(''); setSpecies(''); setAge(''); setSize('');
+    setSearch(''); setCounty(''); setSpecies(''); setAge(''); setSize(''); setGender('');
   };
 
   return (
@@ -130,6 +132,12 @@ function AdoptaPageContent() {
             <option value="mic">{t('adopta-small')}</option>
             <option value="mediu">{t('adopta-medium')}</option>
             <option value="mare">{t('adopta-large')}</option>
+          </select>
+          <select value={gender} onChange={(e) => setGender(e.target.value)}
+            style={{ flex: '1 1 120px', padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'var(--surface)', cursor: 'pointer' }}>
+            <option value="">{t('adopta-gender')}</option>
+            <option value="mascul">{t('adopta-male')}</option>
+            <option value="femela">{t('adopta-female')}</option>
           </select>
           <button onClick={clearFilters}
             style={{ padding: '12px 20px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', background: 'transparent', fontSize: 14, fontWeight: 700, color: 'var(--text2)', cursor: 'pointer', transition: 'all 0.3s', whiteSpace: 'nowrap' }}>
