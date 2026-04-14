@@ -59,7 +59,7 @@ export default function RegisterPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${result.jwt}`,
         },
-        body: JSON.stringify({
+       body: JSON.stringify({
           data: {
             name: assocName,
             county: county,
@@ -67,6 +67,8 @@ export default function RegisterPage() {
             email: email,
             website: website || null,
             description: description,
+            cui: form.cui?.value || null,
+            contact_person: contactPerson,
             verified: false,
           }
         }),
@@ -140,6 +142,10 @@ export default function RegisterPage() {
                 {COUNTIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+          </div>
+          <div>
+            <label style={labelStyle}>CUI / CIF (opțional)</label>
+            <input name="cui" type="text" placeholder="ex: RO12345678" style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Website (opțional)</label>

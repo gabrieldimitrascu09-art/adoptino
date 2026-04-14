@@ -41,11 +41,13 @@ export default function DashboardPage() {
       if (assocData?.data?.length > 0) {
         const a = assocData.data[0];
         setAssociation(a);
-        setProfile({
+       setProfile({
           name: a.name || '',
           description: a.description || '',
           phone: a.phone || '',
           website: a.website || '',
+          cui: a.cui || '',
+          contact_person: a.contact_person || '',
         });
         if (a.logo?.url) setAvatarUrl(a.logo.url);
         const assocAnimals = Array.isArray(a.animals) ? a.animals : [];
@@ -184,6 +186,8 @@ export default function DashboardPage() {
           description: profile.description,
           phone: profile.phone,
           website: profile.website,
+          cui: profile.cui,
+          contact_person: profile.contact_person,
         }})
       });
       const data = await res.json();
@@ -292,6 +296,10 @@ export default function DashboardPage() {
                   <div><label style={lbl}>Telefon</label><input value={profile.phone} onChange={e => setProfile({ ...profile, phone: e.target.value })} placeholder="07xx xxx xxx" style={inp} /></div>
                 </div>
                 <div><label style={lbl}>Website</label><input value={profile.website} onChange={e => setProfile({ ...profile, website: e.target.value })} placeholder="https://asociatia.ro" style={inp} /></div>
+                <div className="dash-form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div><label style={lbl}>CUI / CIF</label><input value={profile.cui} onChange={e => setProfile({ ...profile, cui: e.target.value })} placeholder="RO12345678" style={inp} /></div>
+                  <div><label style={lbl}>Persoană contact</label><input value={profile.contact_person} onChange={e => setProfile({ ...profile, contact_person: e.target.value })} placeholder="Nume complet" style={inp} /></div>
+                </div>
                 <div><label style={lbl}>Despre asociație</label><textarea value={profile.description} onChange={e => setProfile({ ...profile, description: e.target.value })} placeholder="Povestește despre misiunea asociației..." rows={5} style={{ ...inp, resize: 'vertical' }} /></div>
                 <button onClick={handleSaveProfile} className="btn btn-primary" disabled={savingProfile} style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}>{savingProfile ? 'Se salvează...' : 'Salvează profilul'}</button>
               </div>
