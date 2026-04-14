@@ -109,7 +109,10 @@ export default function DashboardPage() {
       sterilized: form.sterilized.checked, vaccinated: form.vaccinated.checked, good_with_kids: form.good_with_kids.checked,
       good_with_pets: form.good_with_pets.checked, house_trained: form.house_trained.checked,
     }};
-    if (imageIds.length > 0) body.data.images = imageIds;
+    if (imageIds.length > 0) {
+      const existingIds = editingAnimal?.images ? editingAnimal.images.map(img => img.id).filter(Boolean) : [];
+      body.data.images = [...existingIds, ...imageIds];
+    }
     if (association && !editingAnimal) body.data.association = association.id;
     try {
       const url = editingAnimal ? `${API_URL}/api/animals/${editingAnimal.documentId}` : `${API_URL}/api/animals`;
@@ -219,8 +222,9 @@ export default function DashboardPage() {
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
-    if (files.length > 5) { setMessage('❌ Maximum 5 fotografii.'); return; }
-    setSelectedImages(files);
+    const combined = [...selectedImages, ...files];
+    if (combined.length > 5) { setMessage(`❌ Maximum 5 fotografii noi. Ai selectat ${combined.length}.`); return; }
+    setSelectedImages(combined);
   };
 
   if (!user) return <div style={{ paddingTop: 120, textAlign: 'center' }}><p>Se încarcă...</p></div>;
@@ -415,12 +419,38 @@ export default function DashboardPage() {
                   <div><label style={lbl}>Descriere</label><textarea name="description" rows={3} defaultValue={editingAnimal?.description || ''} placeholder="Descrie personalitatea animalului..." style={{ ...inp, resize: 'vertical' }} /></div>
                   <div>
                     <label style={lbl}>Fotografii (max 5)</label>
+                    {editingAnimal?.images && editingAnimal.images.length > 0 && (
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                        {editingAnimal.images.map((img, i) => {
+                          const url = img.url?.startsWith('http') ? img.url : `${API_URL}${img.url}`;
+                          return (
+                            <div key={img.id || i} style={{ position: 'relative', width: 100, height: 80, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--border)' }}>
+                              <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <button type="button" onClick={async () => {
+                                const auth = getAuth(); if (!auth) return;
+                                const remaining = editingAnimal.images.filter((_, idx) => idx !== i).map(g => g.id);
+                                try {
+                                  await fetch(`${API_URL}/api/animals/${editingAnimal.documentId}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` },
+                                    body: JSON.stringify({ data: { images: remaining.length > 0 ? remaining : null } })
+                                  });
+                                  setMessage('✅ Poză ștearsă!');
+                                  setEditingAnimal({ ...editingAnimal, images: editingAnimal.images.filter((_, idx) => idx !== i) });
+                                  refreshAnimals();
+                                } catch { setMessage('❌ Eroare la ștergere poză.'); }
+                              }} style={{ position: 'absolute', top: 2, right: 2, width: 20, height: 20, borderRadius: '50%', background: '#dc2626', border: '2px solid white', color: 'white', fontSize: 10, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}>✕</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     <div onClick={() => fileInputRef.current?.click()} style={{ border: '2px dashed var(--border)', borderRadius: 'var(--radius-xs)', padding: 24, textAlign: 'center', cursor: 'pointer', background: 'var(--surface)' }}>
                       <div style={{ fontSize: 32, marginBottom: 8 }}>+</div>
                       <p style={{ fontSize: 14, color: 'var(--text2)', fontWeight: 600 }}>{selectedImages.length > 0 ? `${selectedImages.length} fotografie(i) selectate` : 'Click pentru a selecta fotografii'}</p>
                     </div>
                     <input ref={fileInputRef} type="file" multiple accept="image/*" onChange={handleImageSelect} style={{ display: 'none' }} />
-                    {selectedImages.length > 0 && <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>{selectedImages.map((f, i) => <div key={i} style={{ width: 72, height: 72, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--border)' }}><img src={URL.createObjectURL(f)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></div>)}</div>}
+                    {selectedImages.length > 0 && <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>{selectedImages.map((f, i) => <div key={i} style={{ position: 'relative', width: 72, height: 72, borderRadius: 8, overflow: 'hidden', border: '2px solid var(--border)' }}><img src={URL.createObjectURL(f)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /><button type="button" onClick={() => setSelectedImages(selectedImages.filter((_, idx) => idx !== i))} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: '#dc2626', border: '2px solid white', color: 'white', fontSize: 9, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}>✕</button></div>)}</div>}
                   </div>
                   <div className="dash-checkboxes" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, padding: 16, background: 'var(--surface)', borderRadius: 'var(--radius-xs)' }}>
                     {[{ n: 'sterilized', l: 'Sterilizat', d: editingAnimal?.sterilized }, { n: 'vaccinated', l: 'Vaccinat', d: editingAnimal?.vaccinated }, { n: 'good_with_kids', l: 'Bun cu copiii', d: editingAnimal?.good_with_kids }, { n: 'good_with_pets', l: 'Bun cu alte animale', d: editingAnimal?.good_with_pets }, { n: 'house_trained', l: 'Potrivit pentru bloc', d: editingAnimal?.house_trained }].map(ch => (
