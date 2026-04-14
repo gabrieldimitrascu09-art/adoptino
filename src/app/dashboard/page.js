@@ -83,11 +83,27 @@ export default function DashboardPage() {
   };
 
   const handleLogout = () => { logout(); router.push('/'); };
-
+const fixImageOrientation = (file) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+        }, 'image/jpeg', 0.9);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
   const uploadImages = async (files, jwt) => {
     const ids = [];
     for (const file of files) {
-      const fd = new FormData(); fd.append('files', file);
+      const fixedFile = await fixImageOrientation(file);
+      const fd = new FormData(); fd.append('files', fixedFile);
       try {
         const res = await fetch(`${API_URL}/api/upload`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body: fd });
         const data = await res.json();

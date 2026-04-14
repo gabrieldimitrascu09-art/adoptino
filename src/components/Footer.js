@@ -44,8 +44,8 @@ export default function Footer() {
           <Link href="/register">{t('footer-register')}</Link>
         </div>
         <div className="footer-column">
-          <h4>Feedback</h4>
-          <a href="#" onClick={(e) => { e.preventDefault(); window.__showFeatureRequest?.(); }} style={{ cursor: 'pointer' }}>💡 Cerere funcții</a>
+          <h4>{t('footer-feedback')}</h4>
+          <a href="#" onClick={(e) => { e.preventDefault(); window.__showFeatureRequest?.(); }} style={{ cursor: 'pointer' }}>{t('footer-feature-request')}</a>
         </div>
       </div>
       <div className="footer-bottom">
