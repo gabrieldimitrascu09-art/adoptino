@@ -8,6 +8,7 @@ import ScrollReveal from '@/components/ScrollReveal';
 import HeroSearch from '@/components/HeroSearch';
 import { useLang } from '@/lib/LanguageContext';
 import { getAnimals, getAssociations, getFAQs, getStrapiMedia } from '@/lib/api';
+import { DEMO_FAQ } from '@/data/demo';
 
 // Funcție care transformă un animal din formatul Strapi în formatul pe care AnimalCard îl așteaptă
 function mapStrapiAnimal(item) {
@@ -74,8 +75,11 @@ export default function Home() {
       if (assocsRes?.data) {
         setAssocCount(assocsRes.meta?.pagination?.total || assocsRes.data.length);
       }
-      if (faqsRes?.data) {
+      if (faqsRes?.data && faqsRes.data.length > 0) {
         setFaqItems(faqsRes.data.map(mapStrapiFaq));
+      } else {
+        // Fallback la FAQ-urile demo dacă Strapi nu are date
+        setFaqItems(DEMO_FAQ.map((item, i) => ({ id: i + 1, question: item.q, answer: item.a })));
       }
       setLoading(false);
     }

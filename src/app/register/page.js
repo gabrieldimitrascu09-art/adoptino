@@ -123,6 +123,7 @@ export default function RegisterPage() {
             <div>
               <label style={labelStyle}>{t('register-email')}</label>
               <input name="email" type="email" placeholder="contact@asociatia.ro" required style={inputStyle} />
+              <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>{t('register-email-hint')}</p>
             </div>
             <div>
               <label style={labelStyle}>{t('register-phone')}</label>
@@ -143,8 +144,8 @@ export default function RegisterPage() {
             </div>
           </div>
           <div>
-            <label style={labelStyle}>{t('register-cui')}</label>
-            <input name="cui" type="text" placeholder="ex: RO12345678" style={inputStyle} />
+            <label style={labelStyle}>{t('register-cui-required')}</label>
+            <input name="cui" type="text" placeholder="ex: RO12345678" required style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>{t('register-website')}</label>

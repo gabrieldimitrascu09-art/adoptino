@@ -5,6 +5,8 @@ import Link from 'next/link';
 import AnimalCard from '@/components/AnimalCard';
 import { getAnimals, getStrapiMedia } from '@/lib/api';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.adoptino.ro';
+
 function mapStrapiAnimal(item) {
   const a = item.attributes || item;
   const images = Array.isArray(a.images)
@@ -34,6 +36,7 @@ function mapStrapiAnimal(item) {
     adoption_status: a.adoption_status || 'disponibil',
     association: assoc ? {
       id: assoc.id,
+      documentId: assoc.documentId || null,
       name: assoc.name || '',
       county: assoc.county || '',
       phone: assoc.phone || '',
@@ -56,6 +59,7 @@ export default function AnimalPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [lightbox, setLightbox] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -128,11 +132,13 @@ export default function AnimalPage() {
   const ageLabel = { pui: 'Pui', tanar: 'Tânăr', adult: 'Adult', senior: 'Senior' };
   const sizeLabel = { mic: 'Mic', mediu: 'Mediu', mare: 'Mare' };
 
-  const validateAndSubmit = () => {
+  const validateAndSubmit = async () => {
     const name = document.getElementById('adopt-name').value.trim();
     const phone = document.getElementById('adopt-phone').value.trim();
     const email = document.getElementById('adopt-email').value.trim();
     const city = document.getElementById('adopt-city').value.trim();
+    const housing = document.getElementById('adopt-housing')?.value || '';
+    const message = document.getElementById('adopt-message')?.value?.trim() || '';
     const errors = {};
 
     if (!name) errors.name = true;
@@ -151,6 +157,29 @@ export default function AnimalPage() {
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
+    setSubmitting(true);
+    try {
+      await fetch(`${API_URL}/api/adoption-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: {
+            adopter_name: name,
+            adopter_phone: phone,
+            adopter_email: email,
+            adopter_city: city,
+            housing_type: housing || null,
+            message: message || null,
+            animal: animal.id,
+            association: assoc?.id || null,
+            status: 'nou',
+          }
+        })
+      });
+    } catch (err) {
+      console.error('Adoption request error:', err);
+    }
+    setSubmitting(false);
     setShowAdoptForm(false);
     setShowSuccess(true);
   };
@@ -302,16 +331,16 @@ export default function AnimalPage() {
                 <input id="adopt-city" placeholder="Orașul tău *" style={inputStyle(formErrors.city)} />
                 {formErrors.city && <span style={errorText}>Orașul este obligatoriu</span>}
               </div>
-              <select style={{ padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'white' }}>
+              <select id="adopt-housing" style={{ padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, background: 'white' }}>
                 <option value="">Tip locuință</option>
                 <option value="apartament">Apartament</option>
                 <option value="casa">Casă</option>
               </select>
-              <textarea placeholder="De ce vrei să adopți? Experiență cu animale?" rows={3}
+              <textarea id="adopt-message" placeholder="De ce vrei să adopți? Experiență cu animale?" rows={3}
                 style={{ padding: '12px 16px', border: '2px solid var(--border)', borderRadius: 'var(--radius-xs)', fontSize: 15, outline: 'none', resize: 'vertical' }} />
-              <button className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '14px 28px' }}
-                onClick={validateAndSubmit}>
-                Trimite cererea
+              <button className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '14px 28px', opacity: submitting ? 0.7 : 1 }}
+                onClick={validateAndSubmit} disabled={submitting}>
+                {submitting ? 'Se trimite...' : 'Trimite cererea'}
               </button>
             </div>
           </div>

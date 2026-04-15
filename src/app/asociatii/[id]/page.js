@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AnimalCard from '@/components/AnimalCard';
@@ -32,22 +32,82 @@ function mapStrapiAnimal(item) {
   };
 }
 
+/* ── Lightbox Component ── */
+function Lightbox({ images, index, onClose, onPrev, onNext }) {
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') onPrev();
+      if (e.key === 'ArrowRight') onNext();
+    };
+    window.addEventListener('keydown', handleKey);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', handleKey); document.body.style.overflow = ''; };
+  }, [onClose, onPrev, onNext]);
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.92)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <button onClick={(e) => { e.stopPropagation(); onClose(); }} style={{
+        position: 'absolute', top: 20, right: 20, width: 44, height: 44, borderRadius: '50%',
+        background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', fontSize: 24,
+        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backdropFilter: 'blur(8px)', zIndex: 10
+      }}>✕</button>
+
+      {images.length > 1 && (
+        <button onClick={(e) => { e.stopPropagation(); onPrev(); }} style={{
+          position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+          width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.15)',
+          border: 'none', color: 'white', fontSize: 28, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(8px)', zIndex: 10
+        }}>‹</button>
+      )}
+
+      <img
+        onClick={(e) => e.stopPropagation()}
+        src={images[index]}
+        alt=""
+        style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: 8 }}
+      />
+
+      {images.length > 1 && (
+        <button onClick={(e) => { e.stopPropagation(); onNext(); }} style={{
+          position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
+          width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,255,255,0.15)',
+          border: 'none', color: 'white', fontSize: 28, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(8px)', zIndex: 10
+        }}>›</button>
+      )}
+
+      <div style={{ position: 'absolute', bottom: 20, color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: 600 }}>
+        {index + 1} / {images.length}
+      </div>
+    </div>
+  );
+}
+
 export default function AssociationPage() {
   const { id } = useParams();
   const [assoc, setAssoc] = useState(null);
   const [animals, setAnimals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
     async function load() {
-      // Try to find association by documentId first, then by id
       let assocData = null;
 
-      // Method 1: fetch by documentId (Strapi v5 style)
       const resByDoc = await fetchAPI(`/associations/${id}`, {
         populate: {
           logo: true,
           gallery: true,
+          cover: true,
           animals: {
             populate: { images: true },
             filters: { adoption_status: { $eq: 'disponibil' } }
@@ -58,11 +118,12 @@ export default function AssociationPage() {
       if (resByDoc?.data) {
         assocData = resByDoc.data;
       } else {
-        // Method 2: filter by id number
         const resById = await fetchAPI('/associations', {
           filters: { id: { $eq: id } },
           populate: {
             logo: true,
+            gallery: true,
+            cover: true,
             animals: {
               populate: { images: true },
               filters: { adoption_status: { $eq: 'disponibil' } }
@@ -77,6 +138,7 @@ export default function AssociationPage() {
       if (assocData) {
         const a = assocData.attributes || assocData;
         const logo = a.logo?.url || (a.logo?.data?.url) || null;
+        const coverImg = a.cover?.url || (a.cover?.data?.url) || null;
 
         setAssoc({
           id: assocData.id,
@@ -91,12 +153,12 @@ export default function AssociationPage() {
           founded_year: a.founded_year || null,
           total_adoptions: a.total_adoptions || 0,
           image: logo,
+          cover: coverImg,
           cui: a.cui || '',
           contact_person: a.contact_person || '',
           gallery: Array.isArray(a.gallery) ? a.gallery.map(img => img.url).filter(Boolean) : [],
         });
 
-        // Map animals from the relation
         const assocAnimals = Array.isArray(a.animals?.data) ? a.animals.data : (Array.isArray(a.animals) ? a.animals : []);
         setAnimals(assocAnimals.filter(animal => {
           const animalData = animal.attributes || animal;
@@ -108,6 +170,17 @@ export default function AssociationPage() {
     }
     load();
   }, [id]);
+
+  const openLightbox = (i) => { setLightboxIndex(i); setLightboxOpen(true); };
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+  const prevImage = useCallback(() => {
+    if (!assoc) return;
+    setLightboxIndex(i => (i - 1 + assoc.gallery.length) % assoc.gallery.length);
+  }, [assoc]);
+  const nextImage = useCallback(() => {
+    if (!assoc) return;
+    setLightboxIndex(i => (i + 1) % assoc.gallery.length);
+  }, [assoc]);
 
   if (loading) {
     return (
@@ -133,42 +206,76 @@ export default function AssociationPage() {
 
   return (
     <>
+      {/* ── HEADER with cover ── */}
+      <div style={{ paddingTop: 100 }}>
       <div style={{
-        padding: '100px 24px 40px',
+        position: 'relative',
+        padding: '40px 24px 48px',
         background: 'linear-gradient(180deg, var(--accent), var(--accent2))',
-        textAlign: 'center'
+        textAlign: 'center',
+        overflow: 'hidden',
+        maxWidth: 1280,
+        margin: '0 auto',
+        borderRadius: 'var(--radius)',
       }}>
-        <div style={{
-          width: 100, height: 100, borderRadius: 24, margin: '0 auto 20px', overflow: 'hidden',
-          border: '4px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.15)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          {assoc.image ? (
-            <img src={assoc.image} alt={assoc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <span style={{ fontSize: 40 }}>🏠</span>
-          )}
-        </div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 700, color: 'white', marginBottom: 8 }}>
-          {assoc.name} {assoc.verified && <span style={{ color: '#a7f3d0' }}>✓</span>}
-        </h1>
-        <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 15 }}>📍 {assoc.county}</p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 40, marginTop: 24 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'white' }}>{animals.length}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Animale disponibile</div>
+        {/* Cover photo overlay */}
+        {assoc.cover && (
+          <>
+            <div style={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `url(${assoc.cover})`,
+              backgroundSize: 'cover', backgroundPosition: 'center',
+            }} />
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.45) 100%)',
+            }} />
+          </>
+        )}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{
+            width: 110, height: 110, borderRadius: 28, margin: '0 auto 20px', overflow: 'hidden',
+            border: '4px solid rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+          }}>
+            {assoc.image ? (
+              <img src={assoc.image} alt={assoc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span style={{ fontSize: 44 }}>🏠</span>
+            )}
           </div>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'white' }}>{assoc.total_adoptions}</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Adoptate</div>
-          </div>
-          {assoc.founded_year && (
+          <h1 style={{
+            fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 800, color: 'white',
+            marginBottom: 10, textShadow: '0 2px 8px rgba(0,0,0,0.4)'
+          }}>
+            {assoc.name} {assoc.verified && <span style={{ color: '#a7f3d0' }}>✓</span>}
+          </h1>
+          <p style={{
+            color: 'white', fontSize: 22, fontWeight: 700, letterSpacing: 0.5,
+            textShadow: '0 2px 6px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            {assoc.county}
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 48, marginTop: 28 }}>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'white' }}>{assoc.founded_year}</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Fondată</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, color: 'white', textShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>{animals.length}</div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>Animale disponibile</div>
             </div>
-          )}
-        </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, color: 'white', textShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>{assoc.total_adoptions}</div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>Adoptate</div>
+            </div>
+            {assoc.founded_year && (
+              <div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, color: 'white', textShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>{assoc.founded_year}</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>Fondată</div>
+              </div>
+            )}
+          </div>
+            </div>
+      </div>
       </div>
 
       <section className="section">
@@ -176,7 +283,7 @@ export default function AssociationPage() {
           {assoc.description && (
             <p style={{ fontSize: 17, color: 'var(--text2)', lineHeight: 1.8, marginBottom: 32 }}>{assoc.description}</p>
           )}
-{(assoc.cui || assoc.contact_person) && (
+          {(assoc.cui || assoc.contact_person) && (
             <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', fontSize: 15, color: 'var(--text2)' }}>
               {assoc.cui && <span>🏢 CUI: <strong>{assoc.cui}</strong></span>}
               {assoc.contact_person && <span>👤 Contact: <strong>{assoc.contact_person}</strong></span>}
@@ -205,18 +312,45 @@ export default function AssociationPage() {
               }}>🌐 {assoc.website}</a>
             )}
           </div>
-{assoc.gallery.length > 0 && (
+
+          {/* ── Gallery with Lightbox ── */}
+          {assoc.gallery.length > 0 && (
             <div style={{ marginBottom: 40 }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, marginBottom: 16 }}>Galerie foto</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                 {assoc.gallery.map((url, i) => (
-                  <div key={i} style={{ borderRadius: 'var(--radius-sm)', overflow: 'hidden', height: 180 }}>
-                    <img src={url} alt={`${assoc.name} foto ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div
+                    key={i}
+                    onClick={() => openLightbox(i)}
+                    className="gallery-thumb"
+                    style={{
+                      borderRadius: 'var(--radius-sm)', overflow: 'hidden', height: 180,
+                      cursor: 'pointer', position: 'relative'
+                    }}
+                  >
+                    <img src={url} alt={`${assoc.name} foto ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s' }} />
+                    <div className="gallery-overlay" style={{
+                      position: 'absolute', inset: 0, background: 'rgba(0,0,0,0)',
+                      transition: 'background 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <span className="gallery-zoom" style={{ color: 'white', fontSize: 28, opacity: 0, transition: 'opacity 0.3s' }}>🔍</span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {lightboxOpen && assoc.gallery.length > 0 && (
+            <Lightbox
+              images={assoc.gallery}
+              index={lightboxIndex}
+              onClose={closeLightbox}
+              onPrev={prevImage}
+              onNext={nextImage}
+            />
+          )}
+
           {animals.length > 0 ? (
             <>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, marginBottom: 24 }}>
@@ -234,6 +368,12 @@ export default function AssociationPage() {
           )}
         </div>
       </section>
+
+      <style jsx>{`
+        .gallery-thumb:hover .gallery-overlay { background: rgba(0,0,0,0.25) !important; }
+        .gallery-thumb:hover .gallery-zoom { opacity: 1 !important; }
+        .gallery-thumb:hover img { transform: scale(1.05); }
+      `}</style>
     </>
   );
 }
