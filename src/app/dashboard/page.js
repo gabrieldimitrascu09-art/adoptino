@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, logout } from '@/lib/auth';
 import { useLang } from '@/lib/LanguageContext';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const API_URL = 'https://api.adoptino.ro';
 
@@ -328,7 +329,7 @@ const fixImageOrientation = (file) => {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--surface)', borderRadius: 'var(--radius-xs)', padding: 4 }}>
-          {[{ k: 'animals', l: 'Animale' }, { k: 'requests', l: 'Cereri' }, { k: 'profile', l: 'Profil' }, { k: 'settings', l: 'Setări' }].map(t => (
+          {[{ k: 'animals', l: 'Animale' }, { k: 'requests', l: 'Cereri' }, { k: 'stats', l: 'Statistici' }, { k: 'profile', l: 'Profil' }, { k: 'settings', l: 'Setări' }].map(t => (
             <button key={t.k} onClick={() => setTab(t.k)} style={{
               flex: 1, padding: '12px 16px', borderRadius: 'var(--radius-xs)', border: 'none',
               background: tab === t.k ? 'var(--card)' : 'transparent', boxShadow: tab === t.k ? 'var(--shadow)' : 'none',
@@ -512,6 +513,11 @@ const fixImageOrientation = (file) => {
         {/* REQUESTS TAB */}
         {tab === 'requests' && (
           <RequestsTab association={association} />
+        )}
+
+        {/* STATS TAB */}
+        {tab === 'stats' && (
+          <StatsTab animals={animals} />
         )}
 
         {/* ANIMALS TAB */}
@@ -779,6 +785,117 @@ function RequestsTab({ association }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+/* ── Stats Tab Component ── */
+function StatsTab({ animals }) {
+  if (!animals || animals.length === 0) {
+    return (
+      <div style={{ background: 'var(--card)', borderRadius: 'var(--radius)', padding: 48, border: '1px solid var(--border)', textAlign: 'center' }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+        <p style={{ color: 'var(--text2)', fontSize: 16 }}>Adaugă animale ca să vezi statistici.</p>
+      </div>
+    );
+  }
+
+  // Totaluri
+  const totalViews = animals.reduce((s, a) => s + (a.views || 0), 0);
+  const totalPhoneClicks = animals.reduce((s, a) => s + (a.phone_clicks || 0), 0);
+  const totalRequests = animals.reduce((s, a) => s + (a.request_count || 0), 0);
+  const avgViews = Math.round(totalViews / animals.length);
+
+  // Status breakdown
+  const statusCounts = {
+    disponibil: animals.filter(a => (a.adoption_status || 'disponibil') === 'disponibil').length,
+    rezervat: animals.filter(a => a.adoption_status === 'rezervat').length,
+    adoptat: animals.filter(a => a.adoption_status === 'adoptat').length,
+    delistat: animals.filter(a => a.adoption_status === 'delistat').length,
+  };
+
+  const statusData = [
+    { name: 'Disponibil', value: statusCounts.disponibil, color: '#16a34a' },
+    { name: 'Rezervat', value: statusCounts.rezervat, color: '#b45309' },
+    { name: 'Adoptat', value: statusCounts.adoptat, color: '#2563eb' },
+    { name: 'Delistat', value: statusCounts.delistat, color: '#6b7280' },
+  ];
+
+  // Top 3 dupa views
+  const topViews = [...animals].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 3);
+  // Top 3 dupa cereri
+  const topRequests = [...animals].sort((a, b) => (b.request_count || 0) - (a.request_count || 0)).slice(0, 3);
+
+  const cardStyle = { background: 'var(--card)', borderRadius: 'var(--radius)', padding: 20, border: '1px solid var(--border)' };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>Statistici generale</h2>
+
+      {/* Totaluri */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+        <div style={{ ...cardStyle, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, marginBottom: 4 }}>👁</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: 'var(--accent)' }}>{totalViews}</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>Vizualizări totale</div>
+        </div>
+        <div style={{ ...cardStyle, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, marginBottom: 4 }}>📞</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: 'var(--green)' }}>{totalPhoneClicks}</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>Click telefon</div>
+        </div>
+        <div style={{ ...cardStyle, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, marginBottom: 4 }}>📋</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: 'var(--blue)' }}>{totalRequests}</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>Cereri adopție</div>
+        </div>
+        <div style={{ ...cardStyle, textAlign: 'center' }}>
+          <div style={{ fontSize: 28, marginBottom: 4 }}>📊</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: 'var(--yellow)' }}>{avgViews}</div>
+          <div style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>Medie views/animal</div>
+        </div>
+      </div>
+
+      {/* Grafic statusuri */}
+      <div style={cardStyle}>
+        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Anunțuri pe status</h3>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={statusData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="name" tick={{ fontSize: 13, fill: 'var(--text2)' }} />
+            <YAxis allowDecimals={false} tick={{ fontSize: 13, fill: 'var(--text2)' }} />
+            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.04)' }} />
+            <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+              {statusData.map((entry, i) => (
+                <Cell key={i} fill={entry.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Top views + Top requests */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+        <div style={cardStyle}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 12 }}>🔥 Top profile accesate</h3>
+          {topViews.map((a, i) => (
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < topViews.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>{i + 1}</div>
+              <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{a.name}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)' }}>👁 {a.views || 0}</div>
+            </div>
+          ))}
+        </div>
+        <div style={cardStyle}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, marginBottom: 12 }}>💛 Top după cereri</h3>
+          {topRequests.map((a, i) => (
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < topRequests.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--blue-light)', color: 'var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>{i + 1}</div>
+              <div style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{a.name}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--blue)' }}>📋 {a.request_count || 0}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
