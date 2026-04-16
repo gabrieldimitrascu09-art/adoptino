@@ -33,6 +33,10 @@ function mapStrapiAnimal(item) {
     goodWithKids: a.good_with_kids || false,
     goodWithPets: a.good_with_pets || false,
     houseTrained: a.house_trained || false,
+    views: a.views || 0,
+    phone_clicks: a.phone_clicks || 0,
+    email_clicks: a.email_clicks || 0,
+    request_count: a.request_count || 0,
     adoption_status: a.adoption_status || 'disponibil',
     association: assoc ? {
       id: assoc.id,
@@ -60,6 +64,8 @@ export default function AnimalPage() {
   const [lightbox, setLightbox] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [showPhone, setShowPhone] = useState(false);
+  
 
   useEffect(() => {
     async function load() {
@@ -92,6 +98,16 @@ export default function AnimalPage() {
     }
     load();
   }, [id]);
+
+  useEffect(() => {
+    if (animal?.documentId) {
+      fetch(`${API_URL}/api/animals/${animal.documentId}/increment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field: 'views' })
+      }).catch(() => {});
+    }
+  }, [animal?.documentId]);
 
   if (loading) {
     return (
@@ -176,6 +192,12 @@ export default function AnimalPage() {
           }
         })
       });
+      // Incrementeaza contor cereri pe animal
+      await fetch(`${API_URL}/api/animals/${animal.documentId}/increment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field: 'request_count' })
+      }).catch(() => {});
     } catch (err) {
       console.error('Adoption request error:', err);
     }
@@ -255,8 +277,23 @@ export default function AnimalPage() {
 
               {assoc && (
                 <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-                  {assoc.phone && <a href={`tel:${assoc.phone}`} style={contactBtnStyle('var(--green-light)', 'var(--green)', '#a7f3d0')}>📞 {assoc.phone}</a>}
-                  {assoc.email && <a href={`mailto:${assoc.email}`} style={contactBtnStyle('var(--blue-light)', 'var(--blue)', '#93c5fd')}>✉️ Email</a>}
+                  {assoc.phone && (
+                    showPhone ? (
+                      <a href={`tel:${assoc.phone}`} style={contactBtnStyle('var(--green-light)', 'var(--green)', '#a7f3d0')}>📞 {assoc.phone}</a>
+                    ) : (
+                      <button onClick={() => {
+                        setShowPhone(true);
+                        fetch(`${API_URL}/api/animals/${animal.documentId}/increment`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ field: 'phone_clicks' })
+                        }).catch(() => {});
+                      }} style={{ ...contactBtnStyle('var(--green-light)', 'var(--green)', '#a7f3d0'), cursor: 'pointer', border: '2px solid #a7f3d0' }}>
+                        📞 Afișează telefon
+                      </button>
+                    )
+                  )}
+                  
                 </div>
               )}
 

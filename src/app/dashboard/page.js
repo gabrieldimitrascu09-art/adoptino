@@ -621,7 +621,12 @@ const fixImageOrientation = (file) => {
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: isDelistat ? '#9ca3af' : 'var(--text)', textDecoration: isDelistat ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{animal.name}</div>
-                          <div style={{ fontSize: 12, color: 'var(--text3)' }}>{animal.species === 'caine' ? 'Câine' : animal.species === 'pisica' ? 'Pisică' : 'Altele'} · {animal.county}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>{animal.species === 'caine' ? 'Câine' : animal.species === 'pisica' ? 'Pisică' : 'Altele'} · {animal.breed ? animal.breed + ' · ' : ''}{animal.county}</div>
+                          <div style={{ display: 'flex', gap: 10, fontSize: 11, color: 'var(--text3)', flexWrap: 'wrap' }}>
+                            <span title="Vizualizări">👁 {animal.views || 0}</span>
+                            <span title="Click telefon">📞 {animal.phone_clicks || 0}</span>
+                            <span title="Cereri">📋 {animal.request_count || 0}</span>
+                          </div>
                         </div>
                       </div>
                       <div className="dash-animal-actions" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
