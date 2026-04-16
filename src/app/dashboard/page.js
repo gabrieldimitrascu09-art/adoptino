@@ -308,15 +308,15 @@ const fixImageOrientation = (file) => {
               <p style={{ color: 'var(--text3)', fontSize: 14 }}>{user.email}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="btn btn-secondary" style={{ fontSize: 14 }}>Deconectare</button>
+          <button onClick={handleLogout} className="btn btn-secondary" style={{ fontSize: 14 }}>{t('dash-logout')}</button>
         </div>
 
         {/* Stats */}
         <div className="dash-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-          {[{ n: byStatus('disponibil').length, l: 'Disponibile', bg: '#dcfce7', c: '#16a34a' },
-            { n: byStatus('rezervat').length, l: 'Rezervate', bg: '#fef3c7', c: '#b45309' },
-            { n: byStatus('adoptat').length, l: 'Adoptate', bg: '#dbeafe', c: '#2563eb' },
-            { n: byStatus('delistat').length, l: 'Delistate', bg: '#f3f4f6', c: '#6b7280' }
+          {[{ n: byStatus('disponibil').length, l: t('dash-available'), bg: '#dcfce7', c: '#16a34a' },
+            { n: byStatus('rezervat').length, l: t('dash-reserved'), bg: '#fef3c7', c: '#b45309' },
+            { n: byStatus('adoptat').length, l: t('dash-adopted'), bg: '#dbeafe', c: '#2563eb' },
+            { n: byStatus('delistat').length, l: t('dash-delisted'), bg: '#f3f4f6', c: '#6b7280' }
           ].map((s, i) => (
             <div key={i} style={{ background: s.bg, borderRadius: 'var(--radius-sm)', padding: '16px 12px', textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, color: s.c }}>{s.n}</div>
@@ -329,12 +329,12 @@ const fixImageOrientation = (file) => {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--surface)', borderRadius: 'var(--radius-xs)', padding: 4 }}>
-          {[{ k: 'animals', l: 'Animale' }, { k: 'requests', l: 'Cereri' }, { k: 'stats', l: 'Statistici' }, { k: 'profile', l: 'Profil' }, { k: 'settings', l: 'Setări' }].map(t => (
-            <button key={t.k} onClick={() => setTab(t.k)} style={{
+          {[{ k: 'animals', l: t('dash-tab-animals') }, { k: 'requests', l: t('dash-tab-requests') }, { k: 'stats', l: t('dash-tab-stats') }, { k: 'profile', l: t('dash-tab-profile') }, { k: 'settings', l: t('dash-tab-settings') }].map(tb => (
+            <button key={tb.k} onClick={() => setTab(tb.k)} style={{
               flex: 1, padding: '12px 16px', borderRadius: 'var(--radius-xs)', border: 'none',
-              background: tab === t.k ? 'var(--card)' : 'transparent', boxShadow: tab === t.k ? 'var(--shadow)' : 'none',
-              fontWeight: 700, fontSize: 14, cursor: 'pointer', color: tab === t.k ? 'var(--text)' : 'var(--text3)', fontFamily: 'var(--font)', transition: 'all 0.3s'
-            }}>{t.l}</button>
+              background: tab === tb.k ? 'var(--card)' : 'transparent', boxShadow: tab === tb.k ? 'var(--shadow)' : 'none',
+              fontWeight: 700, fontSize: 14, cursor: 'pointer', color: tab === tb.k ? 'var(--text)' : 'var(--text3)', fontFamily: 'var(--font)', transition: 'all 0.3s'
+            }}>{tb.l}</button>
           ))}
         </div>
 
@@ -524,8 +524,8 @@ const fixImageOrientation = (file) => {
         {tab === 'animals' && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>Animale ({animals.length})</h2>
-              <button onClick={() => { setShowForm(true); setEditingAnimal(null); setSelectedImages([]); }} className="btn btn-primary" style={{ fontSize: 14 }}>+ Adaugă animal</button>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700 }}>{t('dash-tab-animals')} ({animals.length})</h2>
+              <button onClick={() => { setShowForm(true); setEditingAnimal(null); setSelectedImages([]); }} className="btn btn-primary" style={{ fontSize: 14 }}>{t('dash-add-animal')}</button>
             </div>
 
             {showForm && (
@@ -600,8 +600,8 @@ const fixImageOrientation = (file) => {
             {loading ? <p style={{ textAlign: 'center', padding: 40, color: 'var(--text2)' }}>Se încarcă...</p>
             : animals.length === 0 ? (
               <div style={{ background: 'var(--card)', borderRadius: 'var(--radius)', padding: 48, border: '1px solid var(--border)', textAlign: 'center' }}>
-                <p style={{ color: 'var(--text2)', fontSize: 18, marginBottom: 16 }}>Nu ai niciun animal adăugat.</p>
-                <button onClick={() => { setShowForm(true); setEditingAnimal(null); }} className="btn btn-primary">+ Adaugă primul animal</button>
+                <p style={{ color: 'var(--text2)', fontSize: 18, marginBottom: 16 }}>{t('dash-no-animals')}</p>
+                <button onClick={() => { setShowForm(true); setEditingAnimal(null); }} className="btn btn-primary">{t('dash-add-first')}</button>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -643,8 +643,8 @@ const fixImageOrientation = (file) => {
                           <option value="adoptat">● Adoptat</option>
                           <option value="delistat">✕ Delistat</option>
                         </select>
-                        <button onClick={() => handleEdit(animal)} title="Editează" style={{ padding: '6px 12px', borderRadius: 6, border: '2px solid var(--border)', background: 'white', color: 'var(--accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Edit</button>
-                        <button onClick={() => handleDelete(animal)} title="Șterge definitiv" style={{ padding: '6px 12px', borderRadius: 6, border: '2px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Șterge</button>
+                        <button onClick={() => handleEdit(animal)} title={t('dash-edit')} style={{ padding: '6px 12px', borderRadius: 6, border: '2px solid var(--border)', background: 'white', color: 'var(--accent)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('dash-edit')}</button>
+                        <button onClick={() => handleDelete(animal)} title={t('dash-delete')} style={{ padding: '6px 12px', borderRadius: 6, border: '2px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t('dash-delete')}</button>
                       </div>
                     </div>
                   );
