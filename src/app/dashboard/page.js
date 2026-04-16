@@ -678,66 +678,119 @@ const inp = { width: '100%', padding: '12px 16px', border: '2px solid var(--bord
 function RequestsTab({ association }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
 
-  useEffect(() => {
-    async function load() {
-      if (!association) { setLoading(false); return; }
-      const auth = getAuth(); if (!auth) { setLoading(false); return; }
-      try {
-        const res = await fetch(
-          `${API_URL}/api/adoption-requests?populate[animal][populate][images]=true&populate[association]=true&sort=createdAt:desc&pagination[pageSize]=100`,
-          { headers: { Authorization: `Bearer ${auth.jwt}` } }
-        );
-        const data = await res.json();
-        const allRequests = data?.data || [];
-        console.log('All requests:', allRequests.length, 'Association:', association.id, association.documentId, association.email);
-        // Filter: match by association id, documentId, OR email
-        const filtered = allRequests.filter(req => {
-          const r = req.attributes || req;
-          const reqAssoc = r.association?.data || r.association;
-          if (!reqAssoc) return false;
-          return reqAssoc.id === association.id 
-            || reqAssoc.documentId === association.documentId
-            || reqAssoc.email === association.email;
-        });
-        console.log('Filtered requests:', filtered.length);
-        setRequests(filtered);
-      } catch (err) {
-        console.error('Error fetching requests:', err);
-      }
-      setLoading(false);
+  const loadRequests = async () => {
+    if (!association) { setLoading(false); return; }
+    const auth = getAuth(); if (!auth) { setLoading(false); return; }
+    try {
+      const res = await fetch(
+        `${API_URL}/api/adoption-requests?populate[animal][populate][images]=true&populate[association]=true&sort=createdAt:desc&pagination[pageSize]=100`,
+        { headers: { Authorization: `Bearer ${auth.jwt}` } }
+      );
+      const data = await res.json();
+      const allRequests = data?.data || [];
+      const filtered = allRequests.filter(req => {
+        const r = req.attributes || req;
+        const reqAssoc = r.association?.data || r.association;
+        if (!reqAssoc) return false;
+        return reqAssoc.id === association.id
+          || reqAssoc.documentId === association.documentId
+          || reqAssoc.email === association.email;
+      });
+      setRequests(filtered);
+    } catch (err) {
+      console.error('Error fetching requests:', err);
     }
-    load();
-  }, [association]);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadRequests(); }, [association]);
+
+  const updateStatus = async (req, newStatus) => {
+    const auth = getAuth(); if (!auth) return;
+    const documentId = req.documentId || req.attributes?.documentId;
+    try {
+      await fetch(`${API_URL}/api/adoption-requests/${documentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${auth.jwt}` },
+        body: JSON.stringify({ data: { status: newStatus } })
+      });
+      setRequests(reqs => reqs.map(r => r.id === req.id ? { ...r, status: newStatus } : r));
+    } catch (err) {
+      console.error('Error updating status:', err);
+    }
+  };
 
   if (loading) return <p style={{ textAlign: 'center', padding: 40, color: 'var(--text2)' }}>Se încarcă cererile...</p>;
 
+  const statusColors = {
+    nou: { bg: '#dbeafe', c: '#2563eb', label: 'Nouă' },
+    vazut: { bg: '#fef3c7', c: '#b45309', label: 'Văzută' },
+    contactat: { bg: '#dcfce7', c: '#16a34a', label: 'Contactat' },
+    respins: { bg: '#f3f4f6', c: '#6b7280', label: 'Respins' },
+  };
+
+  const counts = {
+    all: requests.length,
+    nou: requests.filter(r => ((r.attributes || r).status || 'nou') === 'nou').length,
+    vazut: requests.filter(r => (r.attributes || r).status === 'vazut').length,
+    contactat: requests.filter(r => (r.attributes || r).status === 'contactat').length,
+    respins: requests.filter(r => (r.attributes || r).status === 'respins').length,
+  };
+
+  const displayed = filter === 'all' ? requests : requests.filter(req => {
+    const r = req.attributes || req;
+    return (r.status || 'nou') === filter;
+  });
+
+  const filterTabs = [
+    { k: 'all', l: 'Toate', c: counts.all },
+    { k: 'nou', l: 'Noi', c: counts.nou },
+    { k: 'vazut', l: 'Văzute', c: counts.vazut },
+    { k: 'contactat', l: 'Contactate', c: counts.contactat },
+    { k: 'respins', l: 'Respinse', c: counts.respins },
+  ];
+
   return (
     <div>
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 20 }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, marginBottom: 16 }}>
         Cereri de adopție {requests.length > 0 && <span style={{ color: 'var(--accent)' }}>({requests.length})</span>}
       </h2>
-      {requests.length === 0 ? (
+
+      {/* Filter tabs */}
+      {requests.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+          {filterTabs.map(t => (
+            <button key={t.k} onClick={() => setFilter(t.k)} style={{
+              padding: '8px 14px', borderRadius: 'var(--radius-xs)',
+              border: filter === t.k ? '2px solid var(--accent)' : '2px solid var(--border)',
+              background: filter === t.k ? 'var(--accent-light)' : 'var(--card)',
+              color: filter === t.k ? 'var(--accent)' : 'var(--text2)',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)'
+            }}>{t.l} ({t.c})</button>
+          ))}
+        </div>
+      )}
+
+      {displayed.length === 0 ? (
         <div style={{ background: 'var(--card)', borderRadius: 'var(--radius)', padding: 48, border: '1px solid var(--border)', textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
-          <p style={{ color: 'var(--text2)', fontSize: 16, marginBottom: 8 }}>Nu ai cereri de adopție momentan.</p>
-          <p style={{ color: 'var(--text3)', fontSize: 14 }}>Când un utilizator trimite o cerere pentru unul din animalele tale, aceasta va apărea aici.</p>
+          <p style={{ color: 'var(--text2)', fontSize: 16, marginBottom: 8 }}>
+            {filter === 'all' ? 'Nu ai cereri de adopție momentan.' : 'Nu ai cereri în această categorie.'}
+          </p>
+          {filter === 'all' && <p style={{ color: 'var(--text3)', fontSize: 14 }}>Când un utilizator trimite o cerere pentru unul din animalele tale, aceasta va apărea aici.</p>}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {requests.map((req) => {
+          {displayed.map((req) => {
             const r = req.attributes || req;
             const animalData = r.animal?.data || r.animal;
             const animalName = animalData?.name || animalData?.attributes?.name || 'Animal necunoscut';
             const animalImg = animalData?.images?.[0]?.url || animalData?.attributes?.images?.data?.[0]?.url || null;
             const date = r.createdAt ? new Date(r.createdAt).toLocaleDateString('ro-RO', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-            const statusColors = {
-              nou: { bg: '#dbeafe', c: '#2563eb', label: 'Nouă' },
-              vazut: { bg: '#fef3c7', c: '#b45309', label: 'Văzut' },
-              contactat: { bg: '#dcfce7', c: '#16a34a', label: 'Contactat' },
-              respins: { bg: '#f3f4f6', c: '#6b7280', label: 'Respins' },
-            };
-            const sc = statusColors[r.status] || statusColors.nou;
+            const currentStatus = r.status || 'nou';
+            const sc = statusColors[currentStatus] || statusColors.nou;
 
             return (
               <div key={req.id} style={{
@@ -775,11 +828,19 @@ function RequestsTab({ association }) {
                   )}
                 </div>
 
-                {/* Status badge */}
-                <div style={{
-                  padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700,
-                  background: sc.bg, color: sc.c, alignSelf: 'flex-start'
-                }}>{sc.label}</div>
+                {/* Status selector */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', minWidth: 140 }}>
+                  <select value={currentStatus} onChange={(e) => updateStatus(req, e.target.value)}
+                    style={{
+                      padding: '6px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+                      border: `2px solid ${sc.c}20`, background: sc.bg, color: sc.c, cursor: 'pointer'
+                    }}>
+                    <option value="nou">Nouă</option>
+                    <option value="vazut">Văzută</option>
+                    <option value="contactat">Contactat</option>
+                    <option value="respins">Respins</option>
+                  </select>
+                </div>
               </div>
             );
           })}
